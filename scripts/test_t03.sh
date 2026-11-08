@@ -25,9 +25,12 @@ cleanup() {
 trap cleanup EXIT
 compose config --quiet
 compose build validator
-compose up -d --wait mongo neo4j
+sh scripts/start.sh --env-file "$directory/.env" -p "$project" \
+    -f "$root/docker-compose.yml" -f "$root/tests/t03/compose.yml"
 compose run --rm --no-deps validator python tests/t03/verify.py --load > "$directory/before.json"
 compose stop mongo neo4j
+compose up -d mongo neo4j
+compose run --rm --no-deps mongo-init
 compose up -d --wait mongo neo4j
 compose run --rm --no-deps validator python tests/t03/verify.py > "$directory/after.json"
 cmp "$directory/before.json" "$directory/after.json"

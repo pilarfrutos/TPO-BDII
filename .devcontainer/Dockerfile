@@ -15,4 +15,5 @@ WORKDIR /opt/farmared
 COPY scripts/ scripts/
 COPY data/original/ data/original/
 COPY tests/t03/verify.py tests/t03/verify.py
+COPY tests/t04/verify.py tests/t04/verify.py
 CMD ["python", "tests/t03/verify.py"]

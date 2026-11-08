@@ -32,6 +32,10 @@ def main():
             # ping solo no prueba autenticación: connectionStatus debe tener usuario.
             assert mongo.admin.command("connectionStatus")["authInfo"]["authenticatedUsers"]
             print("MongoDB: autenticación OK; servidor", mongo.server_info()["version"])
+            hello = mongo.admin.command("hello")
+            if hello.get("setName") != "rs0" or not hello.get("isWritablePrimary"):
+                raise RuntimeError("MongoDB requiere rs0 con un PRIMARY")
+            print("MongoDB: replica set rs0; PRIMARY disponible")
             assert neo.verify_authentication(), "Neo4j rechazó la autenticación"
             with neo.session(database=os.environ.get("NEO4J_DATABASE", "neo4j")) as session:
                 assert session.run("RETURN 1 AS ok").single()["ok"] == 1

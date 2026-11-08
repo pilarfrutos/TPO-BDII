@@ -2,7 +2,8 @@ name: farmared
 
 services:
   mongo:
-    image: mongo:8.0.16
+    image: farmared-mongo:8.0.16-t04
+    build: ./docker/mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:?Definir MONGODB_USER en .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:?Definir MONGODB_PASSWORD en .env}
@@ -10,17 +11,26 @@ services:
       - "127.0.0.1:27017:27017"
     volumes:
       - mongo-data:/data/db
+      - mongo-keyfile:/data/keyfile
     healthcheck:
       test:
-        - CMD-SHELL
-        - >-
-          mongosh --quiet --username "$$MONGO_INITDB_ROOT_USERNAME"
-          --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin
-          --eval 'if (db.adminCommand({ping: 1}).ok !== 1) quit(1)'
+        - CMD
+        - mongosh
+        - --nodb
+        - --quiet
+        - /opt/farmared/healthcheck.js
       interval: 10s
       timeout: 10s
       retries: 20
       start_period: 20s
+
+  mongo-init:
+    image: farmared-mongo:8.0.16-t04
+    profiles: ["tools"]
+    entrypoint: ["mongosh", "--nodb", "--quiet", "/opt/farmared/init-replica.js"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:?Definir MONGODB_USER en .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:?Definir MONGODB_PASSWORD en .env}
 
   neo4j:
     image: neo4j:5.26.0-community
@@ -48,4 +58,5 @@ services:
 
 volumes:
   mongo-data:
+  mongo-keyfile:
   neo4j-data:

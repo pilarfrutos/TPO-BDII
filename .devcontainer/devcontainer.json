@@ -1,5 +1,5 @@
 {
-  "name": "FarmaRed — T03",
+  "name": "FarmaRed",
   "dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
   "service": "dev",
   "runServices": ["dev"],
@@ -9,7 +9,7 @@
   "shutdownAction": "stopCompose",
   "remoteUser": "root",
   "remoteEnv": {
-    "MONGODB_URI": "mongodb://mongo:27017/?authSource=admin&directConnection=true",
+    "MONGODB_URI": "mongodb://mongo:27017/?authSource=admin&directConnection=true&replicaSet=rs0",
     "NEO4J_URI": "bolt://neo4j:7687"
   },
   "forwardPorts": ["neo4j:7474", "neo4j:7687", "mongo:27017"],

@@ -11,7 +11,7 @@ services:
       dockerfile: .devcontainer/Dockerfile
       target: validation
     environment:
-      MONGODB_URI: mongodb://mongo:27017/?authSource=admin&directConnection=true
+      MONGODB_URI: mongodb://mongo:27017/?authSource=admin&directConnection=true&replicaSet=rs0
       MONGODB_DATABASE: farmared_t03_test
       MONGODB_USER: ${MONGODB_USER:?}
       MONGODB_PASSWORD: ${MONGODB_PASSWORD:?}

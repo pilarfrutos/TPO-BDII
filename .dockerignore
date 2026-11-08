@@ -10,5 +10,7 @@
 !tests/
 !tests/t03/
 !tests/t03/verify.py
+!tests/t04/
+!tests/t04/verify.py
 **/__pycache__/
 **/*.pyc
