@@ -1,0 +1,16 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# macOS e IDE
+.DS_Store
+.idea/
+.vscode/
+*.log
