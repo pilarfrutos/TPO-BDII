@@ -1,11 +1,5 @@
 services:
   dev:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-      target: development
-    command: sleep infinity
-    working_dir: /workspaces/FarmaRed
     volumes:
       - .:/workspaces/FarmaRed
       - /var/run/docker.sock:/var/run/docker.sock

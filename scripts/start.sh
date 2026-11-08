@@ -3,6 +3,7 @@
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
+. "$root/scripts/docker-env.sh"
 docker compose "$@" config --quiet
 docker compose "$@" up -d --build mongo neo4j
 docker compose "$@" run --rm --no-deps mongo-init

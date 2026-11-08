@@ -3,6 +3,7 @@
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
+. "$root/scripts/docker-env.sh"
 project="farmared-t04-$(date -u +%Y%m%d%H%M%S)-$$"
 directory="$root/.t04/$project"
 mkdir -p "$directory"

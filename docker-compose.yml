@@ -1,6 +1,18 @@
 name: farmared
 
 services:
+  dev:
+    profiles: ["development"]
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+      target: development
+    command: sleep infinity
+    working_dir: /workspaces/FarmaRed
+    environment:
+      DOCKER_CLI_HINTS: "false"
+      BUILDX_GIT_INFO: "false"
+
   mongo:
     image: farmared-mongo:8.0.16-t04
     build: ./docker/mongo

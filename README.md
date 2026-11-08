@@ -271,6 +271,10 @@ forwarding.
 
 ## Problemas frecuentes
 
+Los scripts de arranque y pruebas omiten las sugerencias del CLI y la recopilación
+opcional de metadatos Git para las imágenes de desarrollo. Los warnings y errores
+de Docker se siguen mostrando.
+
 - **Falta una variable o contraseña:** revisar `.env` en el editor. La preparación
   conserva archivos existentes, incluso si tienen campos vacíos. Si esto impide
   crear el Codespace, corregir `.env` en el modo de recuperación y reconstruir.
@@ -285,7 +289,9 @@ forwarding.
   Las URI internas se aplican a sus herramientas; un `docker compose exec` manual
   necesita recibir también las URI de servicio.
 - **Advertencia de contenedor huérfano `dev`:** conservarlo; es el contenedor del
-  editor. No usar `--remove-orphans` ni cambiar `COMPOSE_PROJECT_NAME`.
+  editor. La configuración actual lo declara con el perfil opcional `development`.
+  Si aparece con una versión anterior, actualizar el repositorio y reconstruir el
+  devcontainer. No usar `--remove-orphans` ni cambiar `COMPOSE_PROJECT_NAME`.
 - **El editor subraya `!reset`:** `.vscode/settings.json` declara la etiqueta YAML.
   Ejecutar **Developer: Reload Window** para recargar la configuración.
 - **Compartir una salida de diagnóstico:** usar `docker compose config --quiet`.
