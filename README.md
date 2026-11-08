@@ -19,7 +19,9 @@ en la raíz del repositorio.
    de desarrollo; los motores se levantan en el paso 3.
 3. Abrir `.env` en el editor y revisar la configuración. Se genera automáticamente
    con credenciales aleatorias si no existe; un archivo existente se conserva.
-4. Abrir la terminal integrada en `/workspaces/FarmaRed`.
+4. Abrir la terminal integrada en la raíz del proyecto, donde están `README.md`
+   y `docker-compose.yml`. La ruta puede ser `/workspaces/TPO-BDII` o
+   `/workspaces/FarmaRed`, según cómo se haya abierto el entorno.
 
 No hace falta instalar Python ni Docker en la máquina personal. Para actualizar
 un Codespace existente después de cambios en la configuración, ejecutar
