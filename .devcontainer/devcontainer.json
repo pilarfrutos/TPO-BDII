@@ -1,0 +1,22 @@
+{
+  "name": "FarmaRed — T03",
+  "dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
+  "service": "dev",
+  "runServices": ["dev"],
+  "workspaceFolder": "/workspaces/FarmaRed",
+  "initializeCommand": ["sh", "${localWorkspaceFolder}/.devcontainer/initialize.sh"],
+  "overrideCommand": false,
+  "shutdownAction": "stopCompose",
+  "remoteUser": "root",
+  "remoteEnv": {
+    "MONGODB_URI": "mongodb://mongo:27017/?authSource=admin&directConnection=true",
+    "NEO4J_URI": "bolt://neo4j:7687"
+  },
+  "forwardPorts": ["neo4j:7474", "neo4j:7687", "mongo:27017"],
+  "portsAttributes": {
+    "7474": {"label": "Neo4j Browser", "onAutoForward": "silent"},
+    "7687": {"label": "Neo4j Bolt", "onAutoForward": "silent"},
+    "27017": {"label": "MongoDB", "onAutoForward": "silent"}
+  },
+  "hostRequirements": {"cpus": 2, "memory": "4gb"}
+}

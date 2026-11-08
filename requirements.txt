@@ -1,3 +1,6 @@
-pymongo>=4.10,<5
-neo4j>=5.26,<6
-python-dotenv>=1,<2
+# Versiones exactas, incluidas las dependencias transitivas; Python 3.12.
+pymongo==4.19.0
+dnspython==2.9.2
+neo4j==5.28.8
+pytz==2026.6
+python-dotenv==1.2.4

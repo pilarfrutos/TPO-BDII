@@ -1,142 +1,202 @@
-# TPO-BDII — FarmaRed
+# FarmaRed — Base de Datos II
 
-Base inicial del Trabajo Práctico de Base de Datos II: CSV de la cátedra y loaders
-para MongoDB y Neo4j, con configuración local de Docker. No incluye todavía
-consultas, servicios ni registros propios.
+Entorno de desarrollo con MongoDB, Neo4j y loaders para los nueve CSV de
+`data/original/`. Permite validar e importar los datos desde GitHub Codespaces o
+una Mac con Docker Desktop.
 
-## Estructura
+## 1. Preparar el entorno
 
-```text
-data/original/          Los nueve CSV de la cátedra, sin modificaciones.
-scripts/loader_mongo.py Loader de MongoDB.
-scripts/loader_neo4j.py Loader de Neo4j.
-scripts/datos_csv.py    Lectura, conversión de tipos y validaciones compartidas.
-requirements.txt       Drivers y lectura de variables .env.
-docker-compose.yml     MongoDB y Neo4j con volúmenes persistentes.
-.env.example           Plantilla versionable, sin contraseñas.
-.env                   Configuración local privada; excluida de Git.
-```
+Elegir una de las siguientes opciones. Todos los comandos posteriores se ejecutan
+en la raíz del repositorio.
 
-## Preparación
+### Opción A: GitHub Codespaces
 
-Abrir esta carpeta en VS Code. Usar Python 3.12 o posterior:
+1. En el repositorio de GitHub, seleccionar `main` y abrir
+   **Code → Codespaces → Create codespace**. Esa versión remota debe incluir la
+   carpeta `.devcontainer/`.
+2. Elegir una máquina con al menos 2 CPU y 4 GB de RAM y esperar la construcción.
+   Python y las dependencias se instalan automáticamente. Se inicia el contenedor
+   de desarrollo; los motores se levantan en el paso 3.
+3. Abrir `.env` en el editor y revisar la configuración. Se genera automáticamente
+   con credenciales aleatorias si no existe; un archivo existente se conserva.
+4. Abrir la terminal integrada en `/workspaces/FarmaRed`.
+
+No hace falta instalar Python ni Docker en la máquina personal. Para actualizar
+un Codespace existente después de cambios en la configuración, ejecutar
+**Codespaces: Rebuild Container**.
+
+### Opción B: Mac con Docker Desktop
+
+Requisitos: Docker Desktop en funcionamiento, Docker Compose 2.24.4 o posterior
+y Python 3.12. Abrir la carpeta del repositorio y ejecutar:
 
 ```sh
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+python -m pip check
+sh .devcontainer/initialize.sh
 ```
 
-Los loaders leen automáticamente `.env`; las variables ya exportadas en la
-terminal tienen prioridad. `python-dotenv` permite esa lectura sin cargar el archivo
-como un script de shell.
-
-Las dependencias tienen rangos de versión compatibles; todavía no hay un archivo
-con versiones exactas verificadas. No se instalaron automáticamente en la Mac.
-
-## Iniciar las bases de datos con Docker
-
-Abrir Docker Desktop y esperar a que esté listo. Ya se preparó un `.env` local
-con contraseñas aleatorias que no se versionan. Para otro integrante o una copia
-nueva del repositorio:
+En cada terminal nueva, activar el entorno antes de ejecutar Python:
 
 ```sh
-cp .env.example .env
+source .venv/bin/activate
 ```
 
-Completar `MONGODB_PASSWORD` y `NEO4J_PASSWORD` en ese archivo antes de iniciar.
-Neo4j usa el usuario `neo4j`; su contraseña debe tener al menos ocho caracteres.
-Luego ejecutar desde la raíz del proyecto:
+Para usar el mismo contenedor de Codespaces en la Mac, abrir el proyecto en VS Code
+con la extensión Dev Containers y ejecutar **Dev Containers: Reopen in Container**.
+En ese caso, Python y las dependencias ya están instalados y no se utiliza el venv.
+
+## 2. Configurar variables y credenciales
+
+El script de preparación crea `.env` con credenciales aleatorias sin mostrarlas ni
+sobrescribir un archivo existente. Para preparar el archivo manualmente, copiar
+`.env.example` a `.env` solamente si todavía no existe y completar las contraseñas
+en el editor.
+
+| Variable | Uso / valor predeterminado |
+| --- | --- |
+| `MONGODB_URI` | `mongodb://localhost:27017/?authSource=admin&directConnection=true` |
+| `MONGODB_DATABASE` | `farmared_importacion` |
+| `MONGODB_USER` | `farmared_admin` |
+| `MONGODB_PASSWORD` | Contraseña privada de MongoDB |
+| `NEO4J_URI` | `bolt://localhost:7687` |
+| `NEO4J_DATABASE` | `neo4j` |
+| `NEO4J_USER` | `neo4j` |
+| `NEO4J_PASSWORD` | Contraseña privada de Neo4j |
+
+Para contraseñas manuales, usar letras y números; Neo4j requiere al menos ocho
+caracteres. No usar `/`, espacios, `$`, `#` ni comillas. No subir `.env` ni compartir
+sus contenidos. No cargarlo con `source`: los scripts lo leen automáticamente.
+
+Dentro del devcontainer, la terminal usa `mongo:27017` y `bolt://neo4j:7687` en
+lugar de localhost. No modificar las URI del `.env` para cambiar entre Mac y
+Codespaces: el devcontainer las sobrescribe automáticamente. Otras variables
+exportadas en la terminal tienen prioridad sobre `.env`.
+
+## 3. Iniciar y comprobar las bases
 
 ```sh
 docker compose config --quiet
-docker compose up -d --wait
+docker compose up -d --wait mongo neo4j
 docker compose ps
+python scripts/check_connections.py
 ```
 
-Se usan MongoDB 8.0.16 y Neo4j 5.26.0 Community. Los puertos se publican solo en
-localhost. Descarga y arranque verificados en la Mac: ambos servicios alcanzaron estado
-`healthy`, incluyendo sus comprobaciones de conexión autenticada.
-MongoDB está configurado como instancia standalone para la carga inicial; antes
-de implementar las transacciones de q14/q15 habrá que configurar un replica set.
+Ambos servicios deben aparecer como `healthy`. El comprobador debe informar
+**autenticación OK** para MongoDB y Neo4j, junto con sus versiones. No escribe datos
+ni muestra contraseñas.
 
-Conexiones:
+Versiones del entorno: MongoDB 8.0.16, Neo4j Community 5.26.0 y, en el contenedor,
+Python 3.12.12, Docker CLI 28.0.4 y Compose 2.35.0. Las dependencias Python están
+fijadas en `requirements.txt`.
 
-- **DataGrip / MongoDB:** host `localhost`, puerto `27017`, usuario y contraseña
-  de `.env`, base de autenticación `admin`. Usar la URI `MONGODB_URI` sin agregar
-  la contraseña a archivos versionados y comprobar **Test Connection**.
-- **Neo4j Browser:** abrir http://localhost:7474, conectar a
-  `bolt://localhost:7687`, usuario `neo4j` y contraseña `NEO4J_PASSWORD` de `.env`.
+## 4. Validar y cargar los CSV
 
-Detener conservando los datos y volver a iniciar:
+Primero, validar sin conexión ni escrituras:
 
 ```sh
-docker compose down
-docker compose up -d --wait
+python scripts/loader_mongo.py --dry-run
+python scripts/loader_neo4j.py --dry-run
 ```
 
-Los volúmenes conservan los datos. `docker compose down -v` los eliminaría.
-Cambiar contraseñas en `.env` no cambia automáticamente usuarios de bases que ya
-fueron inicializadas en esos volúmenes. No versionar `.env` ni compartirlo.
+Cada comando debe informar **103 registros**. El aviso sobre la fecha de RC002 es
+esperado: se conserva el dato original del CSV.
 
-## Validar sin bases de datos
-
-Estos comandos no necesitan instalar los drivers y no escriben datos:
+Con ambos motores saludables, cargar los datos:
 
 ```sh
-python3 scripts/loader_mongo.py --dry-run
-python3 scripts/loader_neo4j.py --dry-run
+python scripts/loader_mongo.py
+python scripts/loader_neo4j.py
 ```
 
-Se esperan 103 registros entre los nueve CSV. La fecha de próxima dispensa de RC002
-no coincide con sumar 30 días a su última venta completada (15/09 frente a 14/09).
-Los loaders conservan el valor original y lo informan; no corrigen los archivos.
+Los loaders insertan los registros faltantes sin reemplazar los existentes.
+Repetirlos no duplica entidades ni vuelve a descontar stock por ventas históricas.
+La carga MongoDB puede quedar parcial si falla: resolver el error y volver a
+ejecutarla. No hay sincronización automática entre los motores.
 
-## Cargar MongoDB
+Los CSV se importan a ambos motores. MongoDB crea una colección por archivo y
+Neo4j crea nodos y relaciones. Las fechas se conservan como medianoche UTC en
+MongoDB y como Date en Neo4j; mostrar las fechas MongoDB en UTC para conservar su día.
 
-Requiere que el servicio MongoDB de Docker esté saludable.
-Por defecto conecta a localhost:27017 y usa la base `farmared_importacion`.
-Para una conexión diferente, definir `MONGODB_URI` y `MONGODB_DATABASE` en el entorno.
+## 5. Detener y volver a iniciar
+
+Detener los motores conservando los datos:
 
 ```sh
-python3 scripts/loader_mongo.py
+docker compose stop mongo neo4j
 ```
 
-Crea una colección por CSV, con índices únicos para los identificadores, DNI y
-matrícula. Inserta los registros faltantes sin reemplazar los existentes.
-Las fechas se representan como medianoche UTC en BSON; mostrarlas como fechas UTC
-para no cambiar su día por conversión de zona horaria. Vacíos: null; booleanos y
-cantidades se convierten a sus tipos respectivos. Los identificadores siguen como texto.
-
-## Cargar Neo4j
-
-Requiere que el servicio Neo4j de Docker esté saludable. Lee URI, usuario,
-contraseña y base desde `.env`.
+Volver a iniciarlos y comprobar conexiones:
 
 ```sh
-python3 scripts/loader_neo4j.py
+docker compose up -d --wait mongo neo4j
+python scripts/check_connections.py
 ```
 
-Crea etiquetas Cliente, Sucursal, Farmaceutico, Proveedor, Producto, Lote, Receta,
-Venta y DetalleVenta, con unicidad por identificador y también por DNI/matrícula.
-Las diez referencias del dataset se representan como relaciones dirigidas.
-Las fechas son propiedades nativas Date. En Neo4j un campo vacío no se almacena
-como propiedad, equivalente a su ausencia. Nodos y relaciones se cargan en una
-transacción; las restricciones se crean previamente.
+Los datos persisten en los volúmenes `farmared_mongo-data` y `farmared_neo4j-data`.
+No usar `docker compose down -v`, `docker volume rm` ni `docker volume prune`.
+En Codespaces, detener y reanudar conserva el disco; eliminar el Codespace elimina
+su almacenamiento. Respaldar los datos necesarios antes de eliminarlo o hacer una
+reconstrucción que limpie Docker.
 
-## Alcance de esta primera carga
+## Prueba completa en bases aisladas
 
-Se importan inicialmente los nueve CSV a ambos motores para explorar sus modelos.
-Es una decisión de arranque propia, no un requisito de la cátedra ni una copia del
-código del otro grupo. La distribución definitiva de responsabilidades entre
-motores se diseñará después; esta carga no la reemplaza.
+Para comprobar autenticación, carga repetida y persistencia sin escribir en las
+bases de trabajo:
 
-Repetir un loader no duplica ni sobrescribe entidades existentes. Tampoco resta
-stock por las ventas históricas. No hay sincronización automática entre motores.
-MongoDB carga por colección: si falla a mitad de proceso, puede quedar una carga
-parcial; al resolver el error se puede reejecutar para insertar lo faltante.
+```sh
+sh scripts/test_t03.sh
+```
 
-Los CSV originales están intactos. Los loaders se validaron sin conexión; todavía
-falta comprobar su ejecución e idempotencia con ambos motores reales. La
-configuración de Codespaces, los diez registros adicionales por colección/tabla,
-q01–q15 y el informe PDF siguen pendientes para cumplir la consigna completa.
+Se puede ejecutar desde la Mac o la terminal del devcontainer. Para reducir el uso
+de memoria, detener antes los motores de desarrollo con el comando del paso 5.
+El resultado esperado es:
+
+```text
+T03 OK: autenticación, dos cargas iguales y persistencia tras stop/up.
+```
+
+La prueba crea un proyecto Docker propio, con red, credenciales y volúmenes
+independientes, sin publicar puertos. Ejecuta ambos loaders dos veces, compara
+conteos y contenido, detiene los motores, los reinicia y comprueba el contenido
+persistido. Al terminar, detiene los motores de prueba y conserva los volúmenes.
+
+Las credenciales y los informes quedan en `.t03/<proyecto>/`, excluido de Git.
+Cada ejecución crea volúmenes nuevos. El archivo `tests/t03/compose.yml` complementa
+al Compose raíz: usar el script, no ejecutarlo por separado.
+
+## Conectar herramientas gráficas
+
+En la Mac:
+
+- **DataGrip / MongoDB:** `localhost:27017`, usuario y contraseña de `.env`, base
+  de autenticación `admin`, base de datos `farmared_importacion`.
+- **Neo4j Browser:** abrir [localhost:7474](http://localhost:7474), conectar a
+  `bolt://localhost:7687` con usuario `neo4j` y contraseña de `.env`.
+
+En Codespaces, abrir el proyecto en VS Code de escritorio y reenviar desde la
+pestaña **Ports** los puertos `mongo:27017`, `neo4j:7474` y `neo4j:7687`.
+Mantener la visibilidad **Private** y usar los puertos locales que indique VS Code.
+Si alguno está ocupado, el puerto local puede cambiar. La URL HTTPS de Codespaces
+no reemplaza una URI MongoDB o Bolt. Las comprobaciones por terminal no requieren
+forwarding.
+
+## Problemas frecuentes
+
+- **Falta una variable o contraseña:** revisar `.env` en el editor. La preparación
+  conserva archivos existentes, incluso si tienen campos vacíos. Si esto impide
+  crear el Codespace, corregir `.env` en el modo de recuperación y reconstruir.
+- **Autenticación rechazada después de cambiar `.env`:** los usuarios de los
+  volúmenes existentes conservan su contraseña anterior. Recuperar las credenciales
+  originales o cambiar la contraseña dentro del motor; no borrar volúmenes.
+- **Error de conexión desde el devcontainer:** usar la terminal integrada de VS Code.
+  Las URI internas se aplican a sus herramientas; un `docker compose exec` manual
+  necesita recibir también las URI de servicio.
+- **Advertencia de contenedor huérfano `dev`:** conservarlo; es el contenedor del
+  editor. No usar `--remove-orphans` ni cambiar `COMPOSE_PROJECT_NAME`.
+- **El editor subraya `!reset`:** `.vscode/settings.json` declara la etiqueta YAML.
+  Ejecutar **Developer: Reload Window** para recargar la configuración.
+- **Compartir una salida de diagnóstico:** usar `docker compose config --quiet`.
+  La salida completa de `config`, `inspect` o `.env` puede revelar credenciales.

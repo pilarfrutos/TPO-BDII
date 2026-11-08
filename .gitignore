@@ -6,11 +6,13 @@
 *.key
 # Python
 .venv/
+.t03/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 # macOS e IDE
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.log
