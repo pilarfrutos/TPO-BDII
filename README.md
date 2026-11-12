@@ -46,6 +46,14 @@ python scripts/loaders/load_neo4j.py
 El chequeo debe confirmar la autenticación en ambos motores y que MongoDB tiene
 un PRIMARY. Cada loader procesa los 103 registros de los CSV originales.
 
+## Ejecutar una consulta
+
+```sh
+python scripts/run_query.py 8
+```
+
+Podés usar los números 1, 7, 8 y 11.
+
 ## Detener las bases
 
 ```sh

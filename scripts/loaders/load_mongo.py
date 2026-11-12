@@ -5,6 +5,14 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from src.utils.datos_csv import ENTIDADES, leer_datos, para_mongo, resumen
 
+INDICES_CONSULTAS = {
+    "productos": [[("activo", 1), ("id_producto", 1)]],
+    "stock_lotes": ["unidades", [("id_sucursal", 1), ("id_producto", 1),
+                                 ("vencimiento", 1), ("id_lote", 1)]],
+    "ventas": [[("estado", 1), ("fecha", 1)]],
+    "detalle_ventas": ["id_venta"],
+}
+
 
 def cargar(db, datos):
     from pymongo import UpdateOne
@@ -17,6 +25,8 @@ def cargar(db, datos):
             coleccion.create_index("dni", unique=True)
         if nombre == "farmaceuticos":
             coleccion.create_index("matricula", unique=True)
+        for indice in INDICES_CONSULTAS.get(nombre, ()):
+            coleccion.create_index(indice)
         operaciones = [UpdateOne({clave: f[clave]}, {"$setOnInsert": para_mongo(f)}, upsert=True)
                        for f in filas]
         if operaciones:
