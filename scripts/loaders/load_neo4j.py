@@ -1,4 +1,4 @@
-"""Carga inicial de nodos y referencias de los CSV en Neo4j, sin duplicarlos."""
+"""Carga y reconciliación de nodos y relaciones de los CSV en Neo4j."""
 import argparse
 import os
 from pathlib import Path
@@ -11,19 +11,35 @@ from src.utils.proyeccion_neo4j import preparar_proyeccion
 
 
 def cargar(tx, datos):
+    """Aplica las filas normalizadas al grafo dentro de la transacción recibida."""
     # Etiquetas, propiedades y relaciones provienen de constantes; valores parametrizados.
     for nombre, filas in datos.items():
         etiqueta, clave, _ = ENTIDADES[nombre]
         tx.run(f"UNWIND $filas AS fila MERGE (n:{etiqueta} {{{clave}: fila.{clave}}}) "
-               "ON CREATE SET n += fila", filas=filas).consume()
+               "SET n += fila", filas=filas).consume()
     for origen, campo, destino, relacion in RELACIONES:
         etiqueta_a, clave_a, _ = ENTIDADES[origen]
         etiqueta_b, clave_b, _ = ENTIDADES[destino]
-        # Usar la referencia persistida: no recrear una relación vieja si el nodo cambió.
-        tx.run(f"MATCH (a:{etiqueta_a}) WHERE a.{clave_a} IN $ids "
-               f"MATCH (b:{etiqueta_b} {{{clave_b}: a.{campo}}}) "
-               f"MERGE (a)-[:{relacion}]->(b)",
-               ids=[f[clave_a] for f in datos[origen] if f[campo] is not None]).consume()
+        referencias = [
+            {"origen": fila[clave_a], "destino": fila[campo]} for fila in datos[origen]
+        ]
+        tx.run(
+            f"""
+            UNWIND $referencias AS ref
+            MATCH (a:{etiqueta_a} {{{clave_a}: ref.origen}})
+            WITH a, ref, [(a)-[r:{relacion}]->() | r] AS existentes,
+                 head([(a)-[r:{relacion}]->(anterior:{etiqueta_b})
+                       WHERE anterior.{clave_b} = ref.destino | r]) AS vigente
+            FOREACH (obsoleto IN [r IN existentes WHERE vigente IS NULL OR r <> vigente] |
+                DELETE obsoleto
+            )
+            WITH a, ref
+            WHERE ref.destino IS NOT NULL
+            MATCH (b:{etiqueta_b} {{{clave_b}: ref.destino}})
+            MERGE (a)-[:{relacion}]->(b)
+            """,
+            referencias=referencias,
+        ).consume()
 
 
 def main():
@@ -55,7 +71,7 @@ def main():
                 session.run(f"CREATE CONSTRAINT IF NOT EXISTS FOR (n:{etiqueta}) "
                             f"REQUIRE n.{campo} IS UNIQUE").consume()
             session.execute_write(cargar, datos)
-    print("Carga finalizada: nodos existentes conservados y relaciones sin duplicados.")
+    print("Carga finalizada: propiedades y relaciones reconciliadas por identificador.")
 
 
 if __name__ == "__main__":

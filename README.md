@@ -45,6 +45,8 @@ python3.12 scripts/loaders/load_neo4j.py
 
 El chequeo debe confirmar la autenticación en ambos motores y que MongoDB tiene
 un PRIMARY. Cada loader procesa los 103 registros de los CSV originales.
+Al volver a ejecutar el cargador de Neo4j se reaplican las propiedades y
+relaciones de los registros incluidos en los CSV.
 
 ## Ejecutar una consulta
 

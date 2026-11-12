@@ -78,16 +78,16 @@ class ContratoProyeccionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"ventas\[V001\]: identificador repetido"):
             preparar_proyeccion(self.datos)
 
-    def test_carga_enlaza_solo_ventas_que_tienen_receta(self):
+    def test_carga_envia_ventas_con_y_sin_receta_a_reconciliacion(self):
         tx = Mock()
         cargar(tx, preparar_proyeccion(self.datos))
-        ids = next(
-            llamada.kwargs["ids"]
+        referencias = next(
+            llamada.kwargs["referencias"]
             for llamada in tx.run.call_args_list
             if "[:CON_RECETA]" in llamada.args[0]
         )
-        self.assertIn("V001", ids)
-        self.assertNotIn("V002", ids)
+        self.assertIn({"origen": "V001", "destino": "RC007"}, referencias)
+        self.assertIn({"origen": "V002", "destino": None}, referencias)
 
 
 if __name__ == "__main__":

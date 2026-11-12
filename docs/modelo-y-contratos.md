@@ -96,12 +96,26 @@ Neo4j. Conserva los nodos inactivos, sus vínculos históricos y la fecha de
 origen de RC002. El cargador inicial usa el contrato tanto en la carga normal
 como en `python scripts/loaders/load_neo4j.py --dry-run`.
 
-T06 debe leer un snapshot de MongoDB y aplicar la proyección en una transacción
-de Neo4j, actualizando propiedades y sustituyendo relaciones que hayan cambiado.
-Las actualizaciones se serializan para evitar que un snapshot anterior pise
-uno más nuevo. Las consultas del grafo deben informar si el refresco requerido
-falla. MongoDB confirma la venta y Neo4j confirma la proyección en transacciones
-independientes. La entrada actual del loader son los CSV originales.
+### Reconciliación del grafo en T06
+
+El cargador aplica las filas normalizadas en una sola transacción de Neo4j.
+Identifica los nodos por etiqueta e ID de origen, actualiza sus propiedades y
+quita los opcionales que pasan a `null`. Para cada referencia conserva un solo
+vínculo al destino indicado y quita los anteriores. Si una venta pierde su
+referencia a la receta, se quita `CON_RECETA`. Una baja lógica actualiza
+`activo` y conserva el nodo y sus relaciones históricas. Los cambios abarcan
+los registros incluidos en la entrada.
+
+En Neo4j 5.26 se compararon propiedades y destinos después de dos cargas de
+los originales. Ambas dieron 103 nodos y 151 relaciones. Se repitió la prueba
+con un cambio de contacto, una baja lógica, un cambio de sucursal y el retiro
+de una receta. Una referencia obligatoria inválida y un fallo provocado dentro
+de la transacción conservaron el último estado válido.
+
+La entrada actual son los CSV originales. Queda pendiente leer un snapshot de
+MongoDB, serializar los refrescos para aplicarlos en orden e informar los fallos
+antes de responder consultas del grafo. MongoDB confirma la venta y Neo4j
+confirma la proyección en transacciones independientes.
 
 Para q10, los CSV solo permiten inferir la sucursal de ventas históricas con la
 asignación disponible del farmacéutico. Se propone guardar `id_sucursal` en
