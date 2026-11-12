@@ -7,6 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from src.utils.datos_csv import ENTIDADES, RELACIONES, leer_datos, resumen
+from src.utils.proyeccion_neo4j import preparar_proyeccion
 
 
 def cargar(tx, datos):
@@ -29,7 +30,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Validar sin conectar ni escribir")
     args = parser.parse_args()
-    datos = leer_datos()
+    datos = preparar_proyeccion(leer_datos())
     resumen(datos)
     if args.dry_run:
         print("Validación completada; sin conexión a Neo4j.")

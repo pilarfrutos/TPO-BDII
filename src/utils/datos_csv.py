@@ -35,6 +35,24 @@ RELACIONES = [
 ]
 
 
+def validar_referencias(datos):
+    ids_por_entidad = {
+        nombre: {fila[clave] for fila in datos[nombre]}
+        for nombre, (_, clave, _) in ENTIDADES.items()
+    }
+    for origen, campo, destino, _ in RELACIONES:
+        clave = ENTIDADES[origen][1]
+        for fila in datos[origen]:
+            referencia = fila[campo]
+            if referencia is None and (origen, campo) in NULOS:
+                continue
+            if referencia not in ids_por_entidad[destino]:
+                raise ValueError(
+                    f"{origen}[{fila[clave]}].{campo}: referencia inexistente "
+                    f"en {destino} ({referencia!r})"
+                )
+
+
 def leer_datos():
     datos = {}
     for nombre, (_, clave, encabezado) in ENTIDADES.items():
@@ -76,11 +94,7 @@ def leer_datos():
         valores = [f[campo] for f in datos[nombre]]
         if len(valores) != len(set(valores)):
             raise ValueError(f"{nombre}: {campo} repetido")
-    for origen, campo, destino, _ in RELACIONES:
-        clave = ENTIDADES[destino][1]
-        ids = {f[clave] for f in datos[destino]}
-        if any(f[campo] is not None and f[campo] not in ids for f in datos[origen]):
-            raise ValueError(f"{origen}.{campo}: referencia inexistente")
+    validar_referencias(datos)
     for venta in datos["ventas"]:
         items = [f for f in datos["detalle_ventas"] if f["id_venta"] == venta["id_venta"]]
         if not items or sum(f["cantidad"] * f["precio_unit"] for f in items) != venta["total"]:
