@@ -8,6 +8,20 @@ from neo4j import GraphDatabase
 from pymongo import MongoClient
 
 
+def conectar_mongo():
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/?directConnection=true")
+    options = {"serverSelectionTimeoutMS": 5000, "tz_aware": True}
+    user = os.environ.get("MONGODB_USER")
+    if user:
+        password = os.environ.get("MONGODB_PASSWORD")
+        if not password:
+            raise ValueError("Definí MONGODB_PASSWORD en .env o en el entorno.")
+        options.update(username=user, password=password)
+    client = MongoClient(uri, **options)
+    return client, client[os.environ.get("MONGODB_DATABASE", "farmared_importacion")]
+
+
 def clients():
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     mongo = MongoClient(

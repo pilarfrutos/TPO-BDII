@@ -1,9 +1,10 @@
-"""Lectura y validación compartida de los CSV; no escribe archivos ni bases."""
 import csv
-from datetime import date, datetime, time, timezone
+from datetime import date
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "original"
+from src.utils.calendario import fecha_bson
+
+DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "original"
 # Archivo: (etiqueta de grafo, clave de origen, encabezado esperado).
 ENTIDADES = {
     "clientes": ("Cliente", "id_cliente", "id_cliente nombre apellido dni email telefono ciudad provincia obra_social nro_afiliado activo"),
@@ -35,7 +36,6 @@ RELACIONES = [
 
 
 def leer_datos():
-    """Devuelve entidades tipadas; falla antes de conectarse si los CSV son inválidos."""
     datos = {}
     for nombre, (_, clave, encabezado) in ENTIDADES.items():
         with (DATA_DIR / f"{nombre}.csv").open(encoding="utf-8", newline="") as archivo:
@@ -89,9 +89,7 @@ def leer_datos():
 
 
 def para_mongo(fila):
-    """BSON: fecha de calendario como medianoche UTC, sin convertir al horario local."""
-    return {k: datetime.combine(v, time.min, tzinfo=timezone.utc) if isinstance(v, date) else v
-            for k, v in fila.items()}
+    return {k: fecha_bson(v) if isinstance(v, date) else v for k, v in fila.items()}
 
 
 def resumen(datos):

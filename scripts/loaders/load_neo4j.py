@@ -2,7 +2,11 @@
 import argparse
 import os
 from pathlib import Path
-from datos_csv import ENTIDADES, RELACIONES, leer_datos, resumen
+import sys
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from src.utils.datos_csv import ENTIDADES, RELACIONES, leer_datos, resumen
 
 
 def cargar(tx, datos):
@@ -31,7 +35,7 @@ def main():
         print("Validación completada; sin conexión a Neo4j.")
         return
     from dotenv import load_dotenv
-    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    load_dotenv(ROOT / ".env")
     from neo4j import GraphDatabase
 
     uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")

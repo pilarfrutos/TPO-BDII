@@ -2,7 +2,7 @@
   "name": "FarmaRed",
   "dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
   "service": "dev",
-  "runServices": ["dev"],
+  "runServices": ["dev", "neo4j"],
   "workspaceFolder": "/workspaces/FarmaRed",
   "initializeCommand": ["sh", "${localWorkspaceFolder}/.devcontainer/initialize.sh"],
   "overrideCommand": false,

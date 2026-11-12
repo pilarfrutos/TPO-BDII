@@ -1,8 +1,0 @@
-# Se combina con el Compose raíz y tests/t03/compose.yml.
-services:
-  validator:
-    environment:
-      # La misma conexión directa sirve antes y después de la conversión.
-      MONGODB_URI: mongodb://mongo:27017/?authSource=admin&directConnection=true
-      MONGODB_DATABASE: farmared_t04_test
-      FARMARED_T04_TEST: "1"

@@ -1,21 +1,10 @@
 name: farmared
 
 services:
-  dev:
-    profiles: ["development"]
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-      target: development
-    command: sleep infinity
-    working_dir: /workspaces/FarmaRed
-    environment:
-      DOCKER_CLI_HINTS: "false"
-      BUILDX_GIT_INFO: "false"
-
   mongo:
     image: farmared-mongo:8.0.16-t04
     build: ./docker/mongo
+    pull_policy: never
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:?Definir MONGODB_USER en .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:?Definir MONGODB_PASSWORD en .env}
@@ -38,7 +27,10 @@ services:
 
   mongo-init:
     image: farmared-mongo:8.0.16-t04
-    profiles: ["tools"]
+    pull_policy: never
+    depends_on:
+      mongo:
+        condition: service_started
     entrypoint: ["mongosh", "--nodb", "--quiet", "/opt/farmared/init-replica.js"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:?Definir MONGODB_USER en .env}
@@ -46,6 +38,10 @@ services:
 
   neo4j:
     image: neo4j:5.26.0-community
+    # El arranque del proyecto espera a que termine la inicialización de rs0.
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?Definir NEO4J_PASSWORD en .env}
       FARMARED_NEO4J_PASSWORD: ${NEO4J_PASSWORD:?Definir NEO4J_PASSWORD en .env}

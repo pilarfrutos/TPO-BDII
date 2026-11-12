@@ -8,12 +8,3 @@ RUN python -m pip install --no-cache-dir -r /tmp/requirements.txt && python -m p
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /workspaces/FarmaRed
 CMD ["sleep", "infinity"]
-
-# Misma imagen Python/dependencias para probar en una red y volúmenes aislados.
-FROM development AS validation
-WORKDIR /opt/farmared
-COPY scripts/ scripts/
-COPY data/original/ data/original/
-COPY tests/t03/verify.py tests/t03/verify.py
-COPY tests/t04/verify.py tests/t04/verify.py
-CMD ["python", "tests/t03/verify.py"]

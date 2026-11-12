@@ -1,4 +1,3 @@
-# Versiones exactas, incluidas las dependencias transitivas; Python 3.12.
 pymongo==4.19.0
 dnspython==2.9.2
 neo4j==5.28.8
