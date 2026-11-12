@@ -4,14 +4,17 @@
 
 Ejecutá los comandos desde la raíz del repositorio, donde está `docker-compose.yml`.
 
-**Mac.** Abrí Docker Desktop y ejecutá estos comandos con Python 3.12:
+**Mac.** Abrí Docker Desktop e instalá Python 3.12 desde python.org si
+todavía no lo tenés. [Instalador de Python para Mac](https://www.python.org/downloads/macos/)
 
 ```sh
 python3.12 -m pip install --user -r requirements.txt
 sh .devcontainer/initialize.sh
 ```
 
-El último comando genera `.env` con las credenciales locales.
+Si `command -v python3.12` muestra el Python de Homebrew, usá la ruta del
+ejecutable de python.org en los comandos de esta guía:
+`/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12`.
 
 **Windows.** Abrí Docker Desktop con contenedores Linux. Con Python 3.12
 instalado, ejecutá en PowerShell:
@@ -24,26 +27,20 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }
 Si se creó `.env`, completá `MONGODB_PASSWORD` y `NEO4J_PASSWORD` con
 contraseñas locales alfanuméricas de al menos ocho caracteres.
 
-**Entorno virtual opcional.** Si preferís aislar las dependencias o si tu
-instalación de Python bloquea `pip install --user`, como ocurre con Homebrew,
-creá y activá un entorno virtual. Una vez activo, instalá las dependencias con
-`python -m pip install -r requirements.txt`. [Guía de entornos virtuales](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
-
 **GitHub Codespaces.** Abrí **Code → Codespaces → Create codespace**. Una vez
 listo, usá la terminal integrada. El entorno prepara las dependencias y
 genera `.env`.
 
 ## Iniciar y cargar los datos
 
-Usá el mismo Python con el que instalaste las dependencias. Si `python` apunta
-a otra versión o no está disponible, reemplazalo por `python3.12` en Mac o
-`py -3.12` en Windows.
+Los ejemplos usan `python3.12` en Mac. En Windows, reemplazalo por
+`py -3.12`. En Codespaces, usá `python`.
 
 ```sh
 docker compose up -d --wait
-python scripts/check_connections.py
-python scripts/loaders/load_mongo.py
-python scripts/loaders/load_neo4j.py
+python3.12 scripts/check_connections.py
+python3.12 scripts/loaders/load_mongo.py
+python3.12 scripts/loaders/load_neo4j.py
 ```
 
 El chequeo debe confirmar la autenticación en ambos motores y que MongoDB tiene
@@ -52,10 +49,8 @@ un PRIMARY. Cada loader procesa los 103 registros de los CSV originales.
 ## Ejecutar una consulta
 
 ```sh
-python scripts/run_query.py 8
+python3.12 scripts/run_query.py 8
 ```
-
-Podés usar los números 1, 7, 8 y 11.
 
 ## Detener las bases
 
@@ -64,3 +59,25 @@ docker compose stop mongo neo4j
 ```
 
 Para reanudar conservando los datos, ejecutá `docker compose up -d --wait`.
+
+## Opciones para Mac
+
+Si ya usás Conda, podés instalar las dependencias en `base`.
+
+```sh
+conda activate base
+python -m pip install -r requirements.txt
+sh .devcontainer/initialize.sh
+```
+
+Si preferís un entorno virtual, creá `.venv` y activalo.
+
+```sh
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+sh .devcontainer/initialize.sh
+```
+
+En ambos casos usá `python` en los comandos de carga y consulta. Si elegiste
+`.venv`, activalo en cada terminal nueva con `source .venv/bin/activate`.
