@@ -7,34 +7,37 @@ Ejecutá los comandos desde la raíz del repositorio, donde está `docker-compos
 **Mac.** Abrí Docker Desktop y ejecutá estos comandos con Python 3.12:
 
 ```sh
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+python3.12 -m pip install --user -r requirements.txt
 sh .devcontainer/initialize.sh
 ```
 
-El último comando genera `.env` con las credenciales locales. En cada terminal
-nueva, activá el entorno con `source .venv/bin/activate`.
+El último comando genera `.env` con las credenciales locales.
 
 **Windows.** Abrí Docker Desktop con contenedores Linux. Con Python 3.12
 instalado, ejecutá en PowerShell:
 
 ```powershell
-py -3.12 -m venv .venv
-Set-Alias python "$PWD\.venv\Scripts\python.exe"
-python -m pip install -r requirements.txt
+py -3.12 -m pip install --user -r requirements.txt
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
 Si se creó `.env`, completá `MONGODB_PASSWORD` y `NEO4J_PASSWORD` con
-contraseñas locales alfanuméricas de al menos ocho caracteres. En cada
-PowerShell nuevo, repetí el comando `Set-Alias` desde la raíz del repo.
+contraseñas locales alfanuméricas de al menos ocho caracteres.
+
+**Entorno virtual opcional.** Si preferís aislar las dependencias o si tu
+instalación de Python bloquea `pip install --user`, como ocurre con Homebrew,
+creá y activá un entorno virtual. Una vez activo, instalá las dependencias con
+`python -m pip install -r requirements.txt`. [Guía de entornos virtuales](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/)
 
 **GitHub Codespaces.** Abrí **Code → Codespaces → Create codespace**. Una vez
 listo, usá la terminal integrada. El entorno prepara las dependencias y
 genera `.env`.
 
 ## Iniciar y cargar los datos
+
+Usá el mismo Python con el que instalaste las dependencias. Si `python` apunta
+a otra versión o no está disponible, reemplazalo por `python3.12` en Mac o
+`py -3.12` en Windows.
 
 ```sh
 docker compose up -d --wait
