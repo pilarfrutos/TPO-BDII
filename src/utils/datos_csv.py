@@ -4,7 +4,11 @@ from pathlib import Path
 
 from src.utils.calendario import fecha_bson
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "original"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+# CSV de la cátedra: nunca se modifican.
+ORIGINALES_DIR = DATA_DIR / "original"
+# Registros propios (T07): mismos encabezados; cada archivo es opcional.
+ADICIONALES_DIR = DATA_DIR / "adicionales"
 # Archivo: (etiqueta de grafo, clave de origen, encabezado esperado).
 ENTIDADES = {
     "clientes": ("Cliente", "id_cliente", "id_cliente nombre apellido dni email telefono ciudad provincia obra_social nro_afiliado activo"),
@@ -53,51 +57,75 @@ def validar_referencias(datos):
                 )
 
 
-def leer_datos():
+def _leer_csv(ruta, nombre):
+    """Devuelve (origen, fila tipada) por cada línea del CSV de la colección."""
+    encabezado = ENTIDADES[nombre][2]
+    with ruta.open(encoding="utf-8", newline="") as archivo:
+        lector = csv.DictReader(archivo, strict=True)
+        if lector.fieldnames != encabezado.split():
+            raise ValueError(f"{ruta.parent.name}/{ruta.name}: encabezado inesperado")
+        filas = []
+        for linea, fila in enumerate(lector, 2):
+            origen = f"{ruta.parent.name}/{ruta.name}:{linea}"
+            if None in fila or any(v is None for v in fila.values()):
+                raise ValueError(f"{origen}: cantidad incorrecta de columnas")
+            tipada = {}
+            for campo, valor in fila.items():
+                if valor == "":
+                    if (nombre, campo) not in NULOS:
+                        raise ValueError(f"{origen}:{campo}: vacío inesperado")
+                    tipada[campo] = None
+                elif campo in ENTEROS:
+                    tipada[campo] = int(valor)
+                    if tipada[campo] < 0 or (campo == "cantidad" and tipada[campo] == 0):
+                        raise ValueError(f"{origen}:{campo}: cantidad inválida")
+                elif campo in FECHAS:
+                    tipada[campo] = date.fromisoformat(valor)
+                    if tipada[campo].isoformat() != valor:
+                        raise ValueError(f"{origen}:{campo}: fecha no ISO")
+                elif campo == "activo":
+                    if valor not in {"True", "False"}:
+                        raise ValueError(f"{origen}: booleano inválido")
+                    tipada[campo] = valor == "True"
+                else:
+                    tipada[campo] = valor
+            filas.append((origen, tipada))
+        return filas
+
+
+def leer_datos(directorios=(ORIGINALES_DIR, ADICIONALES_DIR)):
+    """Lee y valida los CSV de los originales y, si existen, de los adicionales.
+
+    El primer directorio debe contener los nueve archivos. Los siguientes son
+    opcionales y pueden omitir archivos. La unicidad de IDs, DNI y matrículas,
+    las referencias y los totales se validan sobre el conjunto unido.
+    """
+    principal, *extra = [Path(d) for d in directorios]
     datos = {}
-    for nombre, (_, clave, encabezado) in ENTIDADES.items():
-        with (DATA_DIR / f"{nombre}.csv").open(encoding="utf-8", newline="") as archivo:
-            lector = csv.DictReader(archivo, strict=True)
-            if lector.fieldnames != encabezado.split():
-                raise ValueError(f"{nombre}: encabezado inesperado")
-            filas = []
-            ids = set()
-            for linea, fila in enumerate(lector, 2):
-                if None in fila or any(v is None for v in fila.values()):
-                    raise ValueError(f"{nombre}:{linea}: cantidad incorrecta de columnas")
-                tipada = {}
-                for campo, valor in fila.items():
-                    if valor == "":
-                        if (nombre, campo) not in NULOS:
-                            raise ValueError(f"{nombre}:{linea}:{campo}: vacío inesperado")
-                        tipada[campo] = None
-                    elif campo in ENTEROS:
-                        tipada[campo] = int(valor)
-                        if tipada[campo] < 0 or (campo == "cantidad" and tipada[campo] == 0):
-                            raise ValueError(f"{nombre}:{linea}:{campo}: cantidad inválida")
-                    elif campo in FECHAS:
-                        tipada[campo] = date.fromisoformat(valor)
-                        if tipada[campo].isoformat() != valor:
-                            raise ValueError(f"{nombre}:{linea}:{campo}: fecha no ISO")
-                    elif campo == "activo":
-                        if valor not in {"True", "False"}:
-                            raise ValueError(f"{nombre}:{linea}: booleano inválido")
-                        tipada[campo] = valor == "True"
-                    else:
-                        tipada[campo] = valor
-                if tipada[clave] in ids:
-                    raise ValueError(f"{nombre}: identificador repetido {tipada[clave]}")
-                ids.add(tipada[clave])
-                filas.append(tipada)
-            datos[nombre] = filas
+    for nombre, (_, clave, _) in ENTIDADES.items():
+        rutas = [principal / f"{nombre}.csv"]
+        rutas += [d / f"{nombre}.csv" for d in extra if (d / f"{nombre}.csv").is_file()]
+        filas = []
+        vistos = {}
+        for ruta in rutas:
+            for origen, fila in _leer_csv(ruta, nombre):
+                if fila[clave] in vistos:
+                    raise ValueError(f"{origen}: identificador repetido {fila[clave]} "
+                                     f"(ya definido en {vistos[fila[clave]]})")
+                vistos[fila[clave]] = origen
+                filas.append(fila)
+        datos[nombre] = filas
     for nombre, campo in [("clientes", "dni"), ("farmaceuticos", "matricula")]:
         valores = [f[campo] for f in datos[nombre]]
         if len(valores) != len(set(valores)):
             raise ValueError(f"{nombre}: {campo} repetido")
     validar_referencias(datos)
+    totales = {}
+    for detalle in datos["detalle_ventas"]:
+        totales[detalle["id_venta"]] = (totales.get(detalle["id_venta"], 0)
+                                        + detalle["cantidad"] * detalle["precio_unit"])
     for venta in datos["ventas"]:
-        items = [f for f in datos["detalle_ventas"] if f["id_venta"] == venta["id_venta"]]
-        if not items or sum(f["cantidad"] * f["precio_unit"] for f in items) != venta["total"]:
+        if totales.get(venta["id_venta"]) != venta["total"]:
             raise ValueError(f"{venta['id_venta']}: total inconsistente")
     return datos
 
