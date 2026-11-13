@@ -192,20 +192,14 @@ q15(db, id_venta, sesion)
   prolongados, la próxima se fija a 30 días mientras queden dispensas; al
   completar la receta se limpia la fecha. RC002 se conserva tal como vino.
 
-### Estado de la implementación (T13)
+### Estado de la implementación (T12 y T13)
 
-q14 está implementada con esta firma y la regla de reintento propuesta (ver
-[evidencias/q14.md](evidencias/q14.md)). Invoca
-`src.services.query_15_descuento_stock.q15(db, id_venta, sesion)` dentro de su
-transacción. Ese módulo corresponde a T12 y todavía no existe; hasta entonces
-las pruebas inyectan un descuento de prueba. Para T12 y T14:
-
-- q15 debe leer la venta y el detalle con la sesión recibida. La sucursal ya
-  viene en `venta.id_sucursal`.
-- q15 no debe confirmar ni abortar por su cuenta: ante falta de stock, lanza
-  una excepción.
-- El reparto que devuelva q15 debe poder guardarse en BSON (lista de dicts).
-  q14 lo persiste en `venta.registro.descuento`.
+q14 invoca q15 dentro de su transacción. q15 usa `venta.id_sucursal` y
+`venta.fecha` para elegir lotes y guarda el reparto en `venta.registro.descuento`.
+Si se vuelve a invocar con esa venta, devuelve el reparto guardado. Si falta
+stock, lanza `ErrorStock` con código `stock_insuficiente` y q14 aborta la
+operación. Las pruebas de T12 ejecutan el descuento real desde q14. El ensayo
+completo de integración corresponde a T14. Ver [evidencia de q15](evidencias/q15.md).
 
 Las ventas nuevas agregan dos campos que no están en el CSV: `id_sucursal`
 (para q10, pendiente de confirmar con B y D) y `registro` (solicitud, dispensa

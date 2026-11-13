@@ -2,10 +2,9 @@
 
 Uso: python tests/servicios/verify_q14.py [--evidencia]
 
-Mientras q15 (T12) no esté disponible, el descuento de stock se reemplaza por
-`descuento_de_prueba`: toma cada producto de un único lote de la sucursal con
-unidades suficientes. Solo sirve para comprobar que q14 invoca el descuento en
-su transacción y revierte todo si falla; el FEFO real se prueba en T12/T14.
+`descuento_de_prueba` toma cada producto de un único lote de la sucursal con
+unidades suficientes. Permite aislar las validaciones de q14 y comprobar que
+revierte todo si falla el descuento. verify_q15.py ejecuta el FEFO real.
 """
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
