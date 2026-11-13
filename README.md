@@ -91,14 +91,15 @@ imprimen el antes y el después de las operaciones (ver
 ```sh
 python3.12 scripts/run_query.py 1
 python3.12 scripts/run_query.py q03 --id-cliente C001
+python3.12 scripts/run_query.py q04
 python3.12 scripts/run_query.py 7
 python3.12 scripts/run_query.py 8
 python3.12 scripts/run_query.py 11
 ```
 
-q03 refresca la proyección desde MongoDB y devuelve el historial en Neo4j.
-El [ejemplo verificado de q03](docs/evidencias/q03.md) incluye el orden de
-los eventos y los resultados para un historial vacío o un ID inexistente.
+q03 y q04 refrescan la proyección desde MongoDB antes de consultar Neo4j.
+Los ejemplos verificados muestran el [historial de un cliente](docs/evidencias/q03.md)
+y los [clientes con más de una receta](docs/evidencias/q04.md).
 
 ## Detener las bases
 
