@@ -22,6 +22,16 @@ def conectar_mongo():
     return client, client[os.environ.get("MONGODB_DATABASE", "farmared_importacion")]
 
 
+def conectar_neo4j():
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    uri = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    user = os.environ.get("NEO4J_USER", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD")
+    if not password:
+        raise ValueError("Definí NEO4J_PASSWORD en .env o en el entorno.")
+    return GraphDatabase.driver(uri, auth=(user, password), connection_timeout=5)
+
+
 def clients():
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
     mongo = MongoClient(

@@ -82,8 +82,8 @@ conectar, y un error indica el archivo y la línea.
 **Interfaz con el grafo (T06).**
 [`leer_snapshot(client, db)`](../src/utils/datos_mongo.py) devuelve las nueve
 colecciones sin `_id`, ordenadas por ID y leídas en una sesión `snapshot`, con
-la forma que acepta `preparar_proyeccion`. Así el grafo puede construirse desde
-MongoDB en lugar de los CSV.
+la forma que acepta `preparar_proyeccion`. T06 usa esta función como fuente
+de la proyección.
 
 ## Neo4j: proyección de lectura
 
@@ -127,8 +127,8 @@ sin `CON_RECETA`. Si la venta informa una receta, la referencia debe existir.
 La validación se comparte con el lector de CSV. El contrato comprueba IDs
 repetidos, campos obligatorios y referencias en memoria antes de escribir en
 Neo4j. Conserva los nodos inactivos, sus vínculos históricos y la fecha de
-origen de RC002. El cargador inicial usa el contrato tanto en la carga normal
-como en `python scripts/loaders/load_neo4j.py --dry-run`.
+origen de RC002. El cargador usa el contrato tanto al publicar en Neo4j como
+en `python scripts/loaders/load_neo4j.py --dry-run`.
 
 ### Reconciliación del grafo en T06
 
@@ -146,10 +146,44 @@ con un cambio de contacto, una baja lógica, un cambio de sucursal y el retiro
 de una receta. Una referencia obligatoria inválida y un fallo provocado dentro
 de la transacción conservaron el último estado válido.
 
-La entrada actual son los CSV originales. Queda pendiente leer un snapshot de
-MongoDB, serializar los refrescos para aplicarlos en orden e informar los fallos
-antes de responder consultas del grafo. MongoDB confirma la venta y Neo4j
-confirma la proyección en transacciones independientes.
+### Sincronización desde MongoDB en T06
+
+[`sincronizar_grafo(db_mongo, sesion_neo4j, consulta=None)`](../src/services/sincronizacion_neo4j.py)
+inicializa las restricciones y toma un bloqueo de escritura sobre el nodo
+`ControlProyeccion` antes de llamar a `leer_snapshot`. En la misma transacción
+de Neo4j reconcilia los nodos y vínculos y quita de la proyección los IDs que
+salieron de la fuente, por ejemplo después de un reinicio de MongoDB. Las bajas
+lógicas siguen presentes en el snapshot con `activo=False`. El bloqueo se
+libera al confirmar o revertir. Cada reintento vuelve a tomar el bloqueo y
+abre un snapshot nuevo.
+
+El cargador usa esa función para publicar el snapshot. Las consultas del grafo
+pueden pasar una función de lectura que reciba la transacción y materialice su
+resultado. La lectura se ejecuta después de reconciliar y el resultado se
+devuelve después del commit. La proyección representa el punto de lectura de
+MongoDB. MongoDB y Neo4j confirman sus transacciones de forma independiente.
+
+Ante un fallo de lectura, validación o publicación se informa el error y se
+descarta el resultado de la consulta. Un rollback confirmado conserva el
+grafo anterior. Si se pierde la conexión durante el commit de Neo4j, se
+informa que el resultado de la confirmación quedó indeterminado y se puede
+volver a sincronizar.
+
+**Verificación.** En MongoDB 8.0.16 y Neo4j 5.26, dos refrescos dieron los
+mismos 103 nodos de negocio y 151 relaciones. Con tres registros adicionales
+temporales se comprobaron la carga repetida, el cambio de contacto y la baja
+lógica con historial. Una escritura multicollección entre dos lecturas del
+snapshot se vio completa en el siguiente refresco. Con dos refrescos
+simultáneos, el segundo esperó el bloqueo antes de leer MongoDB. Una referencia
+inválida y un fallo de escritura conservaron el grafo anterior. Falta repetir
+la verificación con los adicionales definitivos de T07.
+
+**Escenario para T15.** En un entorno de prueba, sincronizá una vez, detené
+Neo4j con `docker compose stop neo4j` y modificá un cliente en MongoDB. Ejecutá
+el cargador y verificá el error con código `1`. Volvé a levantar Neo4j con
+`docker compose up -d --wait neo4j`, repetí el refresco y comprobá que el cambio
+del cliente aparece en el grafo. La llamada con `consulta` debe propagar el
+error mientras Neo4j está caído.
 
 Para q10, los CSV solo permiten inferir la sucursal de ventas históricas con la
 asignación disponible del farmacéutico. Se propone guardar `id_sucursal` en
@@ -210,7 +244,7 @@ y descuento, para los reintentos). La proyección al grafo los ignora.
 
 | Integrantes | Acuerdo pendiente |
 | --- | --- |
-| B y C | T05 entrega las nueve colecciones con el contrato (verificado con `preparar_proyeccion` sobre `leer_snapshot`). Falta que B confirme si T06 usa `leer_snapshot` como fuente. |
+| B, C y D | T06 usa `leer_snapshot` de T05. Queda verificar el conjunto definitivo cuando se incorporen los adicionales de T07. |
 | A, B y C | Confirmar firmas, retornos, errores y regla de reintento de q14/q15. Resolver el vencimiento del lote en el día y cómo ejecutar q15 desde la terminal. |
 | A, B y C | Acordar criterios de vigencia de una receta sin fecha de vencimiento, si se puede dispensar antes de `proxima_dispensa` y cuándo una venta puede usar una receta para varios productos. |
 | B, C y D | Confirmar si las ventas nuevas guardan `id_sucursal` para q10. Cubrir con datos de prueba una venta histórica atendida por un farmacéutico inactivo. |

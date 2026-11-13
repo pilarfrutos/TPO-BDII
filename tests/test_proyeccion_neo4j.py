@@ -2,7 +2,7 @@ import unittest
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import Mock
 
-from scripts.loaders.load_neo4j import cargar
+from src.services.sincronizacion_neo4j import cargar
 from src.utils.datos_csv import ORIGINALES_DIR, leer_datos, para_mongo
 from src.utils.proyeccion_neo4j import preparar_proyeccion
 

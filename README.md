@@ -44,10 +44,9 @@ python3.12 scripts/loaders/load_neo4j.py
 ```
 
 El chequeo debe confirmar la autenticación en ambos motores y que MongoDB tiene
-un PRIMARY. Cada loader procesa los 103 registros de los CSV originales y,
-si existen, los de `data/adicionales/`.
-Al volver a ejecutar el cargador de Neo4j se reaplican las propiedades y
-relaciones de los registros incluidos en los CSV.
+un PRIMARY. `load_mongo.py` carga los 103 registros de los CSV originales y,
+si existen, los de `data/adicionales/`. Después, `load_neo4j.py` proyecta los
+documentos que están en MongoDB, incluidos los cambios de negocio.
 
 El cargador de MongoDB es aditivo: inserta lo que falta y nunca pisa
 documentos existentes, así que repetirlo no revierte ventas, dispensas ni
@@ -60,6 +59,15 @@ python3.12 scripts/loaders/load_mongo.py --reiniciar farmared_importacion
 ```
 
 `--reiniciar` exige el nombre de la base configurada en `MONGODB_DATABASE`.
+
+Para refrescar Neo4j después de una escritura en MongoDB, ejecutá
+`python3.12 scripts/loaders/load_neo4j.py`. Con `--dry-run`, el comando lee y
+valida el snapshot de MongoDB sin conectarse a Neo4j. Ante un fallo devuelve
+código `1` y escribe el motivo en stderr. Por ejemplo, si Neo4j está caído:
+
+```text
+ERROR: No se pudo publicar la proyección o completar la lectura en Neo4j.
+```
 
 ## Ejecutar las pruebas
 
