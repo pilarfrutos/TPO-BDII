@@ -92,8 +92,8 @@ Filtros exactos de la consigna. No agregar exclusiones que el enunciado no pide.
 | 11 | Ingresos por farmacéutico en el mes actual | Solo 'Completada'; mes calendario actual | MongoDB | T08 ✅ |
 | 12 | Clientes sin ventas en el último año | Incluir quienes nunca compraron; no excluir inactivos por suposición | Neo4j | T09 |
 | 13 | ABM de clientes | Alta con DNI único; modificación de contacto y cobertura; baja lógica | MongoDB (+ refresco del grafo) | T11 ✅ |
-| 14 | Registro de venta 'Completada' validada | Ver N1–N5 y N8; total calculado; receta actualizada | MongoDB (transacción) | T13 ✅ (ensayo completo: T14) |
-| 15 | Descuento de stock FEFO de una venta | Lotes de la sucursal del farmacéutico; omitir vencidos; todo o nada | MongoDB (transacción) | T12 ✅ (ensayo completo: T14) |
+| 14 | Registro de venta 'Completada' validada | Ver N1–N5 y N8; total calculado; receta actualizada | MongoDB (transacción) | T13 y T14 ✅ |
+| 15 | Descuento de stock FEFO de una venta | Lotes de la sucursal del farmacéutico; omitir vencidos; todo o nada | MongoDB (transacción) | T12 y T14 ✅ |
 
 Las consultas q01, q07, q08 y q11 ya existen en `src/services/`. Queda completar
 sus pruebas de borde (T08, puntos 6 y 8).

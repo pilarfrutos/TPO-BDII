@@ -192,14 +192,15 @@ q15(db, id_venta, sesion)
   prolongados, la próxima se fija a 30 días mientras queden dispensas; al
   completar la receta se limpia la fecha. RC002 se conserva tal como vino.
 
-### Estado de la implementación (T12 y T13)
+### Estado de la implementación (T12, T13 y T14)
 
 q14 invoca q15 dentro de su transacción. q15 usa `venta.id_sucursal` y
 `venta.fecha` para elegir lotes y guarda el reparto en `venta.registro.descuento`.
 Si se vuelve a invocar con esa venta, devuelve el reparto guardado. Si falta
 stock, lanza `ErrorStock` con código `stock_insuficiente` y q14 aborta la
-operación. Las pruebas de T12 ejecutan el descuento real desde q14. El ensayo
-completo de integración corresponde a T14. Ver [evidencia de q15](evidencias/q15.md).
+operación. Las [pruebas de T14](evidencias/q14.md) usan q15 real y verifican la
+reversión después de registrar la dispensa y después de descontar stock. Los
+casos por lote se documentan en la [evidencia de q15](evidencias/q15.md).
 
 Las ventas nuevas agregan dos campos que no están en el CSV: `id_sucursal`
 (para q10, pendiente de confirmar con B y D) y `registro` (solicitud, dispensa
