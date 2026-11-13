@@ -19,6 +19,7 @@ class ContratoProyeccionTest(unittest.TestCase):
         farmaceuticos = {fila["id_farmaceutico"]: fila for fila in datos["farmaceuticos"]}
 
         self.assertIsNone(ventas["V002"]["id_receta"])
+        self.assertIsNone(ventas["V002"]["id_sucursal"])
         self.assertIsNone(recetas["RC001"]["proxima_dispensa"])
         self.assertEqual(recetas["RC002"]["proxima_dispensa"], date(2026, 9, 15))
         self.assertEqual(ventas["V001"]["id_farmaceutico"], "F004")
@@ -41,11 +42,20 @@ class ContratoProyeccionTest(unittest.TestCase):
         self.assertIn("_id", ventas["V002"])
         self.assertNotIn("id_receta", ventas["V002"])
 
+    def test_conserva_la_sucursal_de_la_venta_independiente_del_farmaceutico(self):
+        venta = self.datos["ventas"][0]
+        venta["id_sucursal"] = "S001"
+        venta["registro"] = {"descuento": []}
+        proyectada = preparar_proyeccion(self.datos)["ventas"][0]
+        self.assertEqual(proyectada["id_sucursal"], "S001")
+        self.assertNotIn("registro", proyectada)
+
     def test_valida_referencias_obligatorias_y_opcionales_informadas(self):
         venta = self.datos["ventas"][0]
-        for campo, invalido in (("id_cliente", "C999"), ("id_receta", "RC999")):
+        for campo, invalido in (("id_cliente", "C999"), ("id_receta", "RC999"),
+                                ("id_sucursal", "S999")):
             with self.subTest(campo=campo):
-                original = venta[campo]
+                original = venta.get(campo)
                 venta[campo] = invalido
                 with self.assertRaisesRegex(ValueError, rf"ventas\[V001\]\.{campo}: referencia"):
                     preparar_proyeccion(self.datos)
@@ -72,6 +82,13 @@ class ContratoProyeccionTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, rf"{nombre}\[.+\]\.{campo}: se esperaba"):
                     preparar_proyeccion(self.datos)
                 fila[campo] = original
+
+    def test_rechaza_sucursal_de_venta_con_tipo_invalido(self):
+        for valor in (123, ""):
+            with self.subTest(valor=valor):
+                self.datos["ventas"][0]["id_sucursal"] = valor
+                with self.assertRaisesRegex(ValueError, r"ventas\[V001\]\.id_sucursal: se esperaba"):
+                    preparar_proyeccion(self.datos)
 
     def test_rechaza_ids_repetidos(self):
         self.datos["ventas"].append(self.datos["ventas"][0])

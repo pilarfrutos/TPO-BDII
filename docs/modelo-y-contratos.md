@@ -18,7 +18,7 @@ set permite confirmar o revertir conjuntamente las escrituras de una venta.
 | `productos` | `id_producto` | `id_proveedor`. | |
 | `stock_lotes` | `id_lote` | `id_producto`, `id_sucursal`. El número de lote puede repetirse en distintas sucursales. | |
 | `recetas` | `id_receta` | `id_cliente`, estado y dispensas. | `proxima_dispensa` |
-| `ventas` | `id_venta` | `id_cliente`, `id_farmaceutico`, fecha, tipo, medio de pago, total y estado. | `id_receta` |
+| `ventas` | `id_venta` | `id_cliente`, `id_farmaceutico`, fecha, tipo, medio de pago, total y estado. | `id_receta`, `id_sucursal` en ventas de q14 |
 | `detalle_ventas` | `id_detalle` | `id_venta`, `id_producto`, cantidad y precio unitario de la operación. | |
 
 Se mantienen las colecciones e IDs que ya creó el loader. El detalle queda
@@ -107,16 +107,19 @@ flowchart LR
 ```
 
 q03 reúne las ventas y recetas que apuntan al cliente. q04 cuenta sus recetas
-y q06 parte de la receta para obtener el cliente. q10 recorre las atenciones
-entre sucursal y cliente a través del farmacéutico y la venta. q12 parte de
-todos los clientes y comprueba la ausencia de ventas en el período.
+y q06 parte de la receta para obtener el cliente. q10 usa la sucursal de la
+venta cuando está registrada y recorre el vínculo con el farmacéutico para
+las demás ventas. q12 parte de todos los clientes y comprueba la ausencia de
+ventas en el período.
 
 ### Contrato implementado y entrada para T05
 
 [`preparar_proyeccion`](../src/utils/proyeccion_neo4j.py) recibe un conjunto
 completo de registros agrupados por las nueve colecciones de la tabla. Para
-cada colección proyecta los campos definidos en `ENTIDADES` y descarta los
-campos internos de MongoDB, como `_id`. Conserva IDs, DNI y matrículas como
+cada colección proyecta los campos definidos en `ENTIDADES`. La proyección de
+`Venta` agrega el `id_sucursal` opcional de q14 y valida su referencia a una
+sucursal existente. Los campos internos de MongoDB, como `_id`, quedan fuera.
+Conserva IDs, DNI y matrículas como
 texto, cantidades e importes como enteros y `activo` como booleano.
 
 Las fechas llegan tipadas desde el CSV o como `datetime` de BSON. Se toma el
@@ -185,10 +188,11 @@ el cargador y verificá el error con código `1`. Volvé a levantar Neo4j con
 del cliente aparece en el grafo. La llamada con `consulta` debe propagar el
 error mientras Neo4j está caído.
 
-Para q10, los CSV solo permiten inferir la sucursal de ventas históricas con la
-asignación disponible del farmacéutico. Se propone guardar `id_sucursal` en
-ventas nuevas como dato de la operación, para no reinterpretar su historial
-si el farmacéutico se muda de sucursal.
+Para q10, las ventas de q14 usan `Venta.id_sucursal`, la sucursal guardada al
+momento de la operación. Para las ventas importadas sin ese campo, q10 infiere
+la sucursal de la asignación disponible del farmacéutico. Las ventas nuevas
+conservan su sucursal aunque el farmacéutico se reasigne. El recorrido y los
+casos de prueba están en la [evidencia de q10](evidencias/q10.md).
 
 ## Fechas y contratos de venta para T12–T14
 
@@ -236,9 +240,8 @@ operación. Las [pruebas de T14](evidencias/q14.md) usan q15 real y verifican la
 reversión después de registrar la dispensa y después de descontar stock. Los
 casos por lote se documentan en la [evidencia de q15](evidencias/q15.md).
 
-Las ventas nuevas agregan dos campos que no están en el CSV: `id_sucursal`
-(para q10, pendiente de confirmar con B y D) y `registro` (solicitud, dispensa
-y descuento, para los reintentos). La proyección al grafo los ignora.
+Las ventas nuevas agregan `id_sucursal`, que q10 usa en Neo4j, y `registro`,
+con la solicitud, la dispensa y el descuento para los reintentos en MongoDB.
 
 ## Validaciones pendientes con el equipo
 
@@ -247,4 +250,3 @@ y descuento, para los reintentos). La proyección al grafo los ignora.
 | B, C y D | T06 usa `leer_snapshot` de T05. Queda verificar el conjunto definitivo cuando se incorporen los adicionales de T07. |
 | A, B y C | Confirmar firmas, retornos, errores y regla de reintento de q14/q15. Resolver el vencimiento del lote en el día y cómo ejecutar q15 desde la terminal. |
 | A, B y C | Acordar criterios de vigencia de una receta sin fecha de vencimiento, si se puede dispensar antes de `proxima_dispensa` y cuándo una venta puede usar una receta para varios productos. |
-| B, C y D | Confirmar si las ventas nuevas guardan `id_sucursal` para q10. Cubrir con datos de prueba una venta histórica atendida por un farmacéutico inactivo. |

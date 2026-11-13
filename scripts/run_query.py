@@ -16,11 +16,12 @@ from src.services.query_04_recetas_por_cliente import q04
 from src.services.query_06_dispensas_atrasadas import q06
 from src.services.query_07_productos_mas_vendidos import q07
 from src.services.query_08_stock_bajo import q08
+from src.services.query_10_clientes_por_sucursal import q10
 from src.services.query_11_ingresos_por_farmaceutico import q11
 from src.services.sincronizacion_neo4j import ErrorSincronizacion
 
-CONSULTAS = {consulta.__name__: consulta for consulta in (q01, q03, q04, q06, q07, q08, q11)}
-CONSULTAS_NEO4J = {"q03", "q04", "q06"}
+CONSULTAS = {consulta.__name__: consulta for consulta in (q01, q03, q04, q06, q07, q08, q10, q11)}
+CONSULTAS_NEO4J = {"q03", "q04", "q06", "q10"}
 
 
 def a_json(valor):
@@ -35,14 +36,18 @@ def main():
                         type=lambda valor: "q" + valor.lower().removeprefix("q").zfill(2),
                         help="Código o número de consulta, por ejemplo q08 u 8.")
     parser.add_argument("--id-cliente", help="ID del cliente para q03.")
+    parser.add_argument("--id-sucursal", help="ID de la sucursal para q10.")
     args = parser.parse_args()
     parametros = {}
-    if args.consulta == "q03":
-        if args.id_cliente is None or not args.id_cliente.strip():
-            parser.error("q03 requiere --id-cliente con un ID no vacío.")
-        parametros["id_cliente"] = args.id_cliente
-    elif args.id_cliente is not None:
-        parser.error("--id-cliente se usa con q03.")
+    for codigo, campo in (("q03", "id_cliente"), ("q10", "id_sucursal")):
+        valor = getattr(args, campo)
+        opcion = "--" + campo.replace("_", "-")
+        if args.consulta == codigo:
+            if valor is None or not valor.strip():
+                parser.error(f"{codigo} requiere {opcion} con un ID no vacío.")
+            parametros[campo] = valor
+        elif valor is not None:
+            parser.error(f"{opcion} se usa con {codigo}.")
 
     consulta = CONSULTAS[args.consulta]
     usa_neo4j = args.consulta in CONSULTAS_NEO4J
