@@ -28,7 +28,11 @@ INDICES_CONSULTAS = {
     "productos": [[("activo", 1), ("id_producto", 1)]],
     "stock_lotes": ["unidades", [("id_sucursal", 1), ("id_producto", 1),
                                  ("vencimiento", 1), ("id_lote", 1)]],
-    "ventas": [[("estado", 1), ("fecha", 1)]],
+    "ventas": [
+        [("estado", 1), ("fecha", 1)],
+        [("id_farmaceutico", 1), ("fecha", 1), ("estado", 1)],
+        [("tipo", 1), ("total", 1), ("estado", 1)],
+    ],
     "detalle_ventas": ["id_venta"],
 }
 # IndexOptionsConflict, IndexKeySpecsConflict y DuplicateKey.

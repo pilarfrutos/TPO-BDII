@@ -75,6 +75,7 @@ ERROR: No se pudo publicar la proyección o completar la lectura en Neo4j.
 python3.12 -m unittest discover -s tests
 python3.12 tests/carga/verify_mongo.py
 python3.12 tests/queries/verify.py
+python3.12 tests/queries/verify_t10.py
 python3.12 tests/servicios/verify_q13.py
 python3.12 tests/servicios/verify_q14.py
 python3.12 tests/servicios/verify_q15.py
@@ -90,11 +91,14 @@ imprimen el antes y el después de las operaciones (ver
 
 ```sh
 python3.12 scripts/run_query.py 1
+python3.12 scripts/run_query.py 2
 python3.12 scripts/run_query.py q03 --id-cliente C001
 python3.12 scripts/run_query.py q04
+python3.12 scripts/run_query.py 5
 python3.12 scripts/run_query.py q06
 python3.12 scripts/run_query.py 7
 python3.12 scripts/run_query.py 8
+python3.12 scripts/run_query.py 9
 python3.12 scripts/run_query.py q10 --id-sucursal S002
 python3.12 scripts/run_query.py 11
 ```
@@ -104,6 +108,8 @@ Los ejemplos verificados cubren el [historial de un cliente](docs/evidencias/q03
 los [clientes con más de una receta](docs/evidencias/q04.md), las
 [dispensas atrasadas](docs/evidencias/q06.md) y los
 [clientes atendidos por sucursal](docs/evidencias/q10.md).
+Los ejemplos de q02, q05 y q09 están en las
+[evidencias de T10](docs/evidencias/t10.md).
 q06 usa la fecha actual de Buenos Aires.
 
 ## Detener las bases

@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pytz import timezone as zona_horaria
 
 BUENOS_AIRES = zona_horaria("America/Argentina/Buenos_Aires")
@@ -16,3 +16,11 @@ def limites_mes(dia):
     inicio = dia.replace(day=1)
     siguiente = date(dia.year + (dia.month == 12), dia.month % 12 + 1, 1)
     return fecha_bson(inicio), fecha_bson(siguiente)
+
+
+def limites_ultimos_dias(dia, cantidad):
+    """Devuelve [inicio, día siguiente) para ``cantidad`` fechas incluido ``dia``."""
+    if cantidad < 1:
+        raise ValueError("La cantidad de días debe ser positiva")
+    inicio = dia - timedelta(days=cantidad - 1)
+    return fecha_bson(inicio), fecha_bson(dia + timedelta(days=1))
