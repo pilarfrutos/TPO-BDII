@@ -92,14 +92,16 @@ imprimen el antes y el después de las operaciones (ver
 python3.12 scripts/run_query.py 1
 python3.12 scripts/run_query.py q03 --id-cliente C001
 python3.12 scripts/run_query.py q04
+python3.12 scripts/run_query.py q06
 python3.12 scripts/run_query.py 7
 python3.12 scripts/run_query.py 8
 python3.12 scripts/run_query.py 11
 ```
 
-q03 y q04 refrescan la proyección desde MongoDB antes de consultar Neo4j.
-Los ejemplos verificados muestran el [historial de un cliente](docs/evidencias/q03.md)
-y los [clientes con más de una receta](docs/evidencias/q04.md).
+q03, q04 y q06 refrescan la proyección desde MongoDB antes de consultar Neo4j.
+Los ejemplos verificados cubren el [historial de un cliente](docs/evidencias/q03.md),
+los [clientes con más de una receta](docs/evidencias/q04.md) y las
+[dispensas atrasadas](docs/evidencias/q06.md). q06 usa la fecha actual de Buenos Aires.
 
 ## Detener las bases
 

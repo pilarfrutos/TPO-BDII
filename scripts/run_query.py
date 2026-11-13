@@ -13,13 +13,14 @@ from scripts.check_connections import conectar_mongo, conectar_neo4j
 from src.services.query_01_productos_activos import q01
 from src.services.query_03_historial_cliente import q03
 from src.services.query_04_recetas_por_cliente import q04
+from src.services.query_06_dispensas_atrasadas import q06
 from src.services.query_07_productos_mas_vendidos import q07
 from src.services.query_08_stock_bajo import q08
 from src.services.query_11_ingresos_por_farmaceutico import q11
 from src.services.sincronizacion_neo4j import ErrorSincronizacion
 
-CONSULTAS = {consulta.__name__: consulta for consulta in (q01, q03, q04, q07, q08, q11)}
-CONSULTAS_NEO4J = {"q03", "q04"}
+CONSULTAS = {consulta.__name__: consulta for consulta in (q01, q03, q04, q06, q07, q08, q11)}
+CONSULTAS_NEO4J = {"q03", "q04", "q06"}
 
 
 def a_json(valor):
