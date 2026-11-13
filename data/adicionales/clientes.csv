@@ -1,0 +1,11 @@
+id_cliente,nombre,apellido,dni,email,telefono,ciudad,provincia,obra_social,nro_afiliado,activo
+DC001,Ana,Torres,50100001,ana.torres@example.com,1151000001,Buenos Aires,Buenos Aires,OSDE,OS-501001,True
+DC002,Bruno,Silva,50100002,bruno.silva@example.com,3415100002,Rosario,Santa Fe,Swiss Medical,SM-501002,True
+DC003,Camila,Acosta,50100003,camila.acosta@example.com,3515100003,Córdoba,Córdoba,PAMI,PA-501003,True
+DC004,Diego,Luna,50100004,diego.luna@example.com,1151000004,Buenos Aires,Buenos Aires,IOMA,IO-501004,True
+DC005,Elena,Vega,50100005,elena.vega@example.com,3415100005,Rosario,Santa Fe,Sin cobertura,,True
+DC006,Felipe,Ortiz,50100006,felipe.ortiz@example.com,3515100006,Córdoba,Córdoba,Galeno,GA-501006,True
+DC007,Gabriela,Sosa,50100007,gabriela.sosa@example.com,1151000007,La Plata,Buenos Aires,OSDE,OS-501007,True
+DC008,Hernán,Molina,50100008,hernan.molina@example.com,3415100008,Santa Fe,Santa Fe,Sin cobertura,,True
+DC009,Inés,Castro,50100009,ines.castro@example.com,3515100009,Villa María,Córdoba,PAMI,PA-501009,False
+DC010,Joaquín,Ferreyra,50100010,joaquin.ferreyra@example.com,1151000010,San Isidro,Buenos Aires,IOMA,IO-501010,True

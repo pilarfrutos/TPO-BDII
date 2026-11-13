@@ -1,0 +1,11 @@
+id_receta,id_cliente,medico,matricula_medico,fecha_emision,tipo,dispensas_autorizadas,dispensas_realizadas,proxima_dispensa,estado
+DRC001,DC001,Dra. Alicia Prado,MP-61001,2026-09-15,Tratamiento prolongado,3,1,2026-10-15,Vigente
+DRC002,DC001,Dr. Bernardo Gil,MP-61002,2026-10-30,Simple,1,1,,Completada
+DRC003,DC001,Dra. Cecilia Mora,MP-61003,2026-10-10,Archivada,1,1,,Completada
+DRC004,DC002,Dr. Darío Leiva,MP-61004,2026-10-14,Tratamiento prolongado,3,1,2026-11-13,Vigente
+DRC005,DC003,Dra. Emilia Rey,MP-61005,2026-06-01,Simple,1,0,,Vencida
+DRC006,DC004,Dr. Facundo Paz,MP-61006,2026-11-10,Simple,1,0,,Vigente
+DRC007,DC005,Dra. Graciela Solís,MP-61007,2026-11-01,Tratamiento prolongado,3,0,2026-11-25,Vigente
+DRC008,DC006,Dr. Horacio Vera,MP-61008,2025-10-01,Simple,1,1,,Completada
+DRC009,DC007,Dra. Irene Costa,MP-61009,2026-11-05,Archivada,1,0,,Vigente
+DRC010,DC008,Dr. Javier Ríos,MP-61010,2025-09-01,Simple,1,1,,Completada

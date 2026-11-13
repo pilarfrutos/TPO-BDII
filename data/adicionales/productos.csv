@@ -1,0 +1,11 @@
+id_producto,nombre,principio_activo,categoria,presentacion,condicion_venta,precio_unit,id_proveedor,activo
+DPRD001,Paracetamol Forte 650mg,Paracetamol,Analgésico,Comprimidos x20,Venta libre,2500,DPRV001,True
+DPRD002,Solución fisiológica 500ml,Cloruro de sodio,Solución,Frasco 500 ml,Venta libre,4999,DPRV002,True
+DPRD003,Azitromicina 500mg,Azitromicina,Antibiótico,Comprimidos x3,Bajo receta,6000,DPRV003,True
+DPRD004,Enalapril 10mg,Enalapril,Antihipertensivo,Comprimidos x30,Bajo receta,7200,DPRV004,True
+DPRD005,Protector solar FPS50,Filtros solares,Dermatológico,Crema 120 ml,Venta libre,5000,DPRV005,True
+DPRD006,Vitamina C 1g,Ácido ascórbico,Suplemento,Comprimidos x10,Venta libre,4000,DPRV006,True
+DPRD007,Insulina rápida 100UI,Insulina,Antidiabético,Frasco 10 ml,Bajo receta,8000,DPRV007,True
+DPRD008,Clonazepam 0.5mg,Clonazepam,Ansiolítico,Comprimidos x30,Bajo receta archivada,9500,DPRV008,True
+DPRD009,Barbijo tricapa,No aplica,Descartable,Caja x10,Venta libre,1500,DPRV009,False
+DPRD010,Montelukast 10mg,Montelukast,Antialérgico,Comprimidos x30,Bajo receta,11000,DPRV010,True

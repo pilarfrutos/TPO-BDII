@@ -1,0 +1,11 @@
+id_farmaceutico,nombre,apellido,matricula,cargo,id_sucursal,activo
+DF001,Luciana,Medina,MN-29001,Director Técnico,DS001,True
+DF002,Marcos,Arias,MN-29002,Farmacéutico,DS001,True
+DF003,Nora,Ibáñez,MN-29003,Director Técnico,DS002,True
+DF004,Octavio,Campos,MN-29004,Farmacéutico,DS002,True
+DF005,Paula,Domínguez,MN-29005,Director Técnico,DS003,True
+DF006,Ramiro,Suárez,MN-29006,Director Técnico,DS004,True
+DF007,Sol,Peralta,MN-29007,Director Técnico,DS005,True
+DF008,Tomás,Miranda,MN-29008,Director Técnico,DS010,True
+DF009,Valeria,Nuñez,MN-29009,Farmacéutico,DS006,False
+DF010,Walter,Ponce,MN-29010,Director Técnico,DS007,True
