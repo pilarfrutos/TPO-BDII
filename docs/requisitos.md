@@ -95,8 +95,10 @@ Filtros exactos de la consigna. No agregar exclusiones que el enunciado no pide.
 | 14 | Registro de venta 'Completada' validada | Ver N1–N5 y N8; total calculado; receta actualizada | MongoDB (transacción) | T13 y T14 ✅ |
 | 15 | Descuento de stock FEFO de una venta | Lotes de la sucursal del farmacéutico; omitir vencidos; todo o nada | MongoDB (transacción) | T12 y T14 ✅ |
 
-Las consultas q01, q07, q08 y q11 ya existen en `src/services/`. Queda completar
-sus pruebas de borde (T08, puntos 6 y 8).
+Las consultas q01, q07, q08 y q11 tienen
+[ejemplos y pruebas de borde reproducibles](evidencias/t08.md) con los CSV
+originales y casos preparados en una base temporal. Queda verificarlas con los
+datos adicionales de T07 cuando estén disponibles.
 
 ## 6. Criterios de evaluación
 

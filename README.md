@@ -73,13 +73,18 @@ python3.12 tests/servicios/verify_q15.py
 ```
 
 Los scripts usan una base temporal de MongoDB y la eliminan al terminar.
-Con `--evidencia`, los de q13, q14 y q15 imprimen el antes y el después de las
-operaciones (ver [docs/evidencias/](docs/evidencias/)).
+Con `--evidencia`, `tests/queries/verify.py` imprime ejemplos verificados de
+[q01, q07, q08 y q11](docs/evidencias/t08.md). Los scripts de q13, q14 y q15
+imprimen el antes y el después de las operaciones (ver
+[docs/evidencias/](docs/evidencias/)).
 
 ## Ejecutar una consulta
 
 ```sh
+python3.12 scripts/run_query.py 1
+python3.12 scripts/run_query.py 7
 python3.12 scripts/run_query.py 8
+python3.12 scripts/run_query.py 11
 ```
 
 ## Detener las bases
