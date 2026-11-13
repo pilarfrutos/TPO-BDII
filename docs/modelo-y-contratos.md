@@ -197,6 +197,29 @@ la sucursal de la asignación disponible del farmacéutico. Las ventas nuevas
 conservan su sucursal aunque el farmacéutico se reasigne. El recorrido y los
 casos de prueba están en la [evidencia de q10](evidencias/q10.md).
 
+Para q12, el último año calendario abarca desde el aniversario del año
+anterior hasta hoy, ambos inclusive, según la fecha de Buenos Aires. Si hoy
+es 29 de febrero, el aniversario se ajusta al 28 de febrero del año anterior.
+Cuentan todas las ventas registradas en ese período, incluidas las pendientes
+y anuladas. Los clientes inactivos pueden aparecer si cumplen el criterio.
+
+### T09 completada con la carga final
+
+Se verificaron las cinco consultas en MongoDB 8.0.16 y Neo4j 5.26 desde una
+base limpia. El cargador final incorporó los originales y los adicionales de
+T07. Dos refrescos consecutivos dieron 193 nodos de negocio y 247 relaciones.
+Los ejemplos temporales de q06 y q12 se comprobaron con fecha controlada
+`2026-11-13`. Los comandos de terminal también se ejecutaron con la fecha del
+sistema.
+
+| Consulta | Comando desde la raíz | Resultado con la carga final |
+| --- | --- | --- |
+| [q03](evidencias/q03.md) | `python scripts/run_query.py q03 --id-cliente DC001` | `DRC001`, `DV001`, `DRC003`, `DV003`, `DRC002`, `DV002`, en ese orden. |
+| [q04](evidencias/q04.md) | `python scripts/run_query.py q04` | `C001`, `C002` y `C006` con dos recetas. `DC001` con tres. |
+| [q06](evidencias/q06.md) | `python scripts/run_query.py q06` | `RC002`, `RC003`, `DRC001` y `RC004` al `2026-11-13`. `DRC004` queda fuera porque su dispensa es ese día. |
+| [q10](evidencias/q10.md) | `python scripts/run_query.py q10 --id-sucursal DS006` | `DC007`, atendido en `DV007` por `DF009`, inactivo. |
+| [q12](evidencias/q12.md) | `python scripts/run_query.py q12` | `C004`, `C008` y `DC006`–`DC010` al `2026-11-13`. |
+
 ## Fechas y contratos de venta para T12–T14
 
 Firmas propuestas para revisar con A y C.

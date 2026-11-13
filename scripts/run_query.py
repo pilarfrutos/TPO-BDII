@@ -21,13 +21,14 @@ from src.services.query_08_stock_bajo import q08
 from src.services.query_09_ventas_libres import q09
 from src.services.query_10_clientes_por_sucursal import q10
 from src.services.query_11_ingresos_por_farmaceutico import q11
+from src.services.query_12_clientes_sin_ventas import q12
 from src.services.sincronizacion_neo4j import ErrorSincronizacion
 
 CONSULTAS = {
     consulta.__name__: consulta
-    for consulta in (q01, q02, q03, q04, q05, q06, q07, q08, q09, q10, q11)
+    for consulta in (q01, q02, q03, q04, q05, q06, q07, q08, q09, q10, q11, q12)
 }
-CONSULTAS_NEO4J = {"q03", "q04", "q06", "q10"}
+CONSULTAS_NEO4J = {"q03", "q04", "q06", "q10", "q12"}
 
 
 def a_json(valor):

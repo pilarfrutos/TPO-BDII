@@ -24,3 +24,10 @@ def limites_ultimos_dias(dia, cantidad):
         raise ValueError("La cantidad de días debe ser positiva")
     inicio = dia - timedelta(days=cantidad - 1)
     return fecha_bson(inicio), fecha_bson(dia + timedelta(days=1))
+
+
+def inicio_ultimo_anio(dia):
+    """Devuelve el aniversario anterior, con el 28 de febrero como ajuste bisiesto."""
+    if dia.month == 2 and dia.day == 29:
+        return dia.replace(year=dia.year - 1, day=28)
+    return dia.replace(year=dia.year - 1)

@@ -101,16 +101,18 @@ python3.12 scripts/run_query.py 8
 python3.12 scripts/run_query.py 9
 python3.12 scripts/run_query.py q10 --id-sucursal S002
 python3.12 scripts/run_query.py 11
+python3.12 scripts/run_query.py q12
 ```
 
-q03, q04, q06 y q10 refrescan la proyección desde MongoDB antes de consultar Neo4j.
+q03, q04, q06, q10 y q12 refrescan la proyección desde MongoDB antes de consultar Neo4j.
 Los ejemplos verificados cubren el [historial de un cliente](docs/evidencias/q03.md),
 los [clientes con más de una receta](docs/evidencias/q04.md), las
-[dispensas atrasadas](docs/evidencias/q06.md) y los
-[clientes atendidos por sucursal](docs/evidencias/q10.md).
+[dispensas atrasadas](docs/evidencias/q06.md), los
+[clientes atendidos por sucursal](docs/evidencias/q10.md) y los
+[clientes sin ventas en el último año](docs/evidencias/q12.md).
 Los ejemplos de q02, q05 y q09 están en las
 [evidencias de T10](docs/evidencias/t10.md).
-q06 usa la fecha actual de Buenos Aires.
+q06 y q12 usan la fecha actual de Buenos Aires.
 
 ## Detener las bases
 
