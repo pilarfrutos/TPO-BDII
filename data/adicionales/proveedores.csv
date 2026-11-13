@@ -1,0 +1,11 @@
+id_proveedor,razon_social,cuit,tipo,ciudad,provincia,telefono,activo
+DPRV001,Laboratorio Delta S.A.,30-72000001-1,Laboratorio,Buenos Aires,Buenos Aires,1153000001,True
+DPRV002,Drogas del Centro S.R.L.,30-72000002-2,Droguería,Córdoba,Córdoba,3515300002,True
+DPRV003,Laboratorio Litoral S.A.,30-72000003-3,Laboratorio,Rosario,Santa Fe,3415300003,True
+DPRV004,Distribuidora Federal S.A.,30-72000004-4,Droguería,La Plata,Buenos Aires,2215300004,True
+DPRV005,Biosalud Argentina S.A.,30-72000005-5,Laboratorio,Buenos Aires,Buenos Aires,1153000005,True
+DPRV006,Farma Córdoba S.R.L.,30-72000006-6,Laboratorio,Córdoba,Córdoba,3515300006,True
+DPRV007,Insumos Rosario S.A.,30-72000007-7,Droguería,Rosario,Santa Fe,3415300007,True
+DPRV008,Laboratorio Pampeano S.A.,30-72000008-8,Laboratorio,Santa Rosa,La Pampa,2954300008,True
+DPRV009,Salud Bonaerense S.R.L.,30-72000009-9,Droguería,San Isidro,Buenos Aires,1153000009,False
+DPRV010,Medicamentos del Sur S.A.,30-72000010-0,Laboratorio,Bahía Blanca,Buenos Aires,2915300010,True

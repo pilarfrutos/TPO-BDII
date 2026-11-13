@@ -1,0 +1,11 @@
+id_sucursal,nombre,tipo,direccion,ciudad,provincia,telefono,activo
+DS001,Farmacia San Telmo,Farmacia,Defensa 900,Buenos Aires,Buenos Aires,1152000001,True
+DS002,Farmacia Caballito,Farmacia,Rivadavia 5200,Buenos Aires,Buenos Aires,1152000002,True
+DS003,Farmacia Pichincha,Farmacia,Salta 2100,Rosario,Santa Fe,3415200003,True
+DS004,Farmacia Alberdi,Farmacia,Colón 1500,Córdoba,Córdoba,3515200004,True
+DS005,Farmacia Centro,Farmacia,San Martín 800,Santa Fe,Santa Fe,3425200005,True
+DS006,Farmacia La Plata,Farmacia,Calle 12 1100,La Plata,Buenos Aires,2215200006,True
+DS007,Farmacia San Isidro,Farmacia,Centenario 600,San Isidro,Buenos Aires,1152000007,True
+DS008,Farmacia Villa María,Farmacia,Mitre 450,Villa María,Córdoba,3535200008,True
+DS009,Farmacia Cerrada,Farmacia,Italia 300,Rosario,Santa Fe,3415200009,False
+DS010,Droguería Norte,Droguería,Colectora Norte 2500,San Martín,Buenos Aires,1152000010,True

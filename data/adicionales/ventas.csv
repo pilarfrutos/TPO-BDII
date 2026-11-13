@@ -1,0 +1,11 @@
+id_venta,id_cliente,id_farmaceutico,id_receta,fecha,tipo,medio_pago,total,estado
+DV001,DC001,DF001,DRC001,2026-09-15,Con receta,Obra social,6000,Completada
+DV002,DC001,DF002,DRC002,2026-11-01,Con receta,Obra social,7200,Completada
+DV003,DC001,DF003,DRC003,2026-10-10,Con receta,Crédito,9500,Completada
+DV004,DC002,DF004,DRC004,2026-10-14,Con receta,Obra social,6000,Completada
+DV005,DC004,DF005,DRC006,2026-11-10,Con receta,Débito,7200,Pendiente
+DV006,DC006,DF006,DRC008,2025-10-01,Con receta,Obra social,6000,Completada
+DV007,DC007,DF009,,2025-09-01,Venta libre,Efectivo,2500,Completada
+DV008,DC005,DF007,,2026-11-11,Venta libre,Transferencia,4999,Pendiente
+DV009,DC002,DF007,,2026-11-12,Venta libre,Débito,5000,Completada
+DV010,DC003,DF001,,2026-11-13,Venta libre,Efectivo,4000,Anulada

@@ -178,8 +178,11 @@ temporales se comprobaron la carga repetida, el cambio de contacto y la baja
 lógica con historial. Una escritura multicollección entre dos lecturas del
 snapshot se vio completa en el siguiente refresco. Con dos refrescos
 simultáneos, el segundo esperó el bloqueo antes de leer MongoDB. Una referencia
-inválida y un fallo de escritura conservaron el grafo anterior. Falta repetir
-la verificación con los adicionales definitivos de T07.
+inválida y un fallo de escritura conservaron el grafo anterior.
+
+La verificación de T07 se completó con diez filas propias por cada uno de los
+nueve datasets. Dos sincronizaciones consecutivas conservaron 193 nodos de
+negocio y 247 relaciones, sin duplicaciones.
 
 **Escenario para T15.** En un entorno de prueba, sincronizá una vez, detené
 Neo4j con `docker compose stop neo4j` y modificá un cliente en MongoDB. Ejecutá
@@ -247,6 +250,5 @@ con la solicitud, la dispensa y el descuento para los reintentos en MongoDB.
 
 | Integrantes | Acuerdo pendiente |
 | --- | --- |
-| B, C y D | T06 usa `leer_snapshot` de T05. Queda verificar el conjunto definitivo cuando se incorporen los adicionales de T07. |
 | A, B y C | Confirmar firmas, retornos, errores y regla de reintento de q14/q15. Resolver el vencimiento del lote en el día y cómo ejecutar q15 desde la terminal. |
 | A, B y C | Acordar criterios de vigencia de una receta sin fecha de vencimiento, si se puede dispensar antes de `proxima_dispensa` y cuándo una venta puede usar una receta para varios productos. |
