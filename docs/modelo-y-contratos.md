@@ -51,6 +51,40 @@ por venta, lotes por unidades y búsqueda FEFO por sucursal, producto, vencimien
 e ID. Para aplicar estos índices a una base ya cargada basta repetir el loader:
 inserta faltantes y conserva los documentos existentes.
 
+### Carga MongoDB (T05)
+
+[`load_mongo.py`](../scripts/loaders/load_mongo.py) lee los nueve CSV de
+`data/original/` y, si existen, los de `data/adicionales/` (mismos encabezados;
+cada archivo es opcional). Los originales no se modifican. IDs, DNI,
+matrículas, referencias y totales se validan sobre el conjunto unido antes de
+conectar, y un error indica el archivo y la línea.
+
+- **Carga aditiva (por defecto).** Un upsert con `$setOnInsert` por ID de
+  origen inserta lo que falta y no toca lo existente. Repetirla no revierte
+  altas, bajas, dispensas ni descuentos hechos por q13–q15 (D12).
+- **Stock.** `stock_lotes.csv` ya refleja las ventas históricas y se inserta
+  tal cual: la carga nunca descuenta stock a partir de las ventas.
+- **Verificación.** Después de cada carga, y con `--verificar` sin escribir,
+  se lee un snapshot y se informa por colección: faltantes (error), documentos
+  modificados con sus campos (esperable tras operaciones), documentos propios
+  de la base (altas de q13/q14), IDs repetidos y documentos que no cumplen el
+  contrato de tipos y referencias de `preparar_proyeccion`.
+- **Reinicio explícito.** `--reiniciar NOMBRE_BASE` borra solo las nueve
+  colecciones y vuelve a cargar. Exige el nombre de la base configurada, para
+  no ejecutarlo contra otra por error.
+- **Transición desde la carga exploratoria.** Un documento anterior con otro
+  formato (por ejemplo, una fecha como texto) se conserva con la carga aditiva
+  y la verificación lo marca como incumplimiento del contrato. Si hay IDs
+  repetidos, falla la creación del índice único y el loader lo informa. En
+  ambos casos la salida es `--reiniciar`. Se comprobó en bases aisladas con
+  [`verify_mongo.py`](../tests/carga/verify_mongo.py).
+
+**Interfaz con el grafo (T06).**
+[`leer_snapshot(client, db)`](../src/utils/datos_mongo.py) devuelve las nueve
+colecciones sin `_id`, ordenadas por ID y leídas en una sesión `snapshot`, con
+la forma que acepta `preparar_proyeccion`. Así el grafo puede construirse desde
+MongoDB en lugar de los CSV.
+
 ## Neo4j: proyección de lectura
 
 El grafo permite recorrer el historial de un cliente y su atención en sucursales
@@ -162,7 +196,7 @@ q15(db, id_venta, sesion)
 
 | Integrantes | Acuerdo pendiente |
 | --- | --- |
-| B y C | Confirmar que T05 entrega las nueve colecciones con los campos, tipos y referencias del contrato, también para los datos adicionales. |
+| B y C | T05 entrega las nueve colecciones con el contrato (verificado con `preparar_proyeccion` sobre `leer_snapshot`). Falta que B confirme si T06 usa `leer_snapshot` como fuente. |
 | A, B y C | Confirmar firmas, retornos, errores y regla de reintento de q14/q15. Resolver el vencimiento del lote en el día y cómo ejecutar q15 desde la terminal. |
 | A, B y C | Acordar criterios de vigencia de una receta sin fecha de vencimiento, si se puede dispensar antes de `proxima_dispensa` y cuándo una venta puede usar una receta para varios productos. |
 | B, C y D | Confirmar si las ventas nuevas guardan `id_sucursal` para q10. Cubrir con datos de prueba una venta histórica atendida por un farmacéutico inactivo. |

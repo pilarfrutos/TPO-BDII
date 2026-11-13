@@ -44,9 +44,32 @@ python3.12 scripts/loaders/load_neo4j.py
 ```
 
 El chequeo debe confirmar la autenticación en ambos motores y que MongoDB tiene
-un PRIMARY. Cada loader procesa los 103 registros de los CSV originales.
+un PRIMARY. Cada loader procesa los 103 registros de los CSV originales y,
+si existen, los de `data/adicionales/`.
 Al volver a ejecutar el cargador de Neo4j se reaplican las propiedades y
 relaciones de los registros incluidos en los CSV.
+
+El cargador de MongoDB es aditivo: inserta lo que falta y nunca pisa
+documentos existentes, así que repetirlo no revierte ventas, dispensas ni
+descuentos de stock. Al terminar compara la base con los CSV. Para verificar
+sin escribir o para volver al estado de los CSV (borra las nueve colecciones):
+
+```sh
+python3.12 scripts/loaders/load_mongo.py --verificar
+python3.12 scripts/loaders/load_mongo.py --reiniciar farmared_importacion
+```
+
+`--reiniciar` exige el nombre de la base configurada en `MONGODB_DATABASE`.
+
+## Ejecutar las pruebas
+
+```sh
+python3.12 -m unittest discover -s tests
+python3.12 tests/carga/verify_mongo.py
+python3.12 tests/queries/verify.py
+```
+
+Los dos scripts usan una base temporal de MongoDB y la eliminan al terminar.
 
 ## Ejecutar una consulta
 
