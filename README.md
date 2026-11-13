@@ -68,11 +68,12 @@ python3.12 -m unittest discover -s tests
 python3.12 tests/carga/verify_mongo.py
 python3.12 tests/queries/verify.py
 python3.12 tests/servicios/verify_q13.py
+python3.12 tests/servicios/verify_q14.py
 ```
 
 Los scripts usan una base temporal de MongoDB y la eliminan al terminar.
-`verify_q13.py --evidencia` imprime además el antes/después de cada operación
-(ver [docs/evidencias/q13.md](docs/evidencias/q13.md)).
+Con `--evidencia`, los de q13 y q14 imprimen además el antes/después de cada
+operación (ver [docs/evidencias/](docs/evidencias/)).
 
 ## Ejecutar una consulta
 
