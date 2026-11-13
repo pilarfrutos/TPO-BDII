@@ -1,14 +1,9 @@
-"""Verifica q14 (registro de venta) en una base temporal que se elimina al final.
+"""Verifica q14 con el descuento real de q15 en una base temporal de MongoDB.
 
 Uso: python tests/servicios/verify_q14.py [--evidencia]
-
-Mientras q15 (T12) no esté disponible, el descuento de stock se reemplaza por
-`descuento_de_prueba`: toma cada producto de un único lote de la sucursal con
-unidades suficientes. Solo sirve para comprobar que q14 invoca el descuento en
-su transacción y revierte todo si falla; el FEFO real se prueba en T12/T14.
 """
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+from datetime import date, timedelta
 import json
 from pathlib import Path
 import sys
@@ -19,30 +14,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.check_connections import conectar_mongo
 from scripts.loaders.load_mongo import cargar
 from src.services.query_14_registro_venta import ErrorVenta, q14
-from src.utils.calendario import fecha_bson, hoy_local
+from src.services.query_15_descuento_stock import q15
+from src.utils.calendario import fecha_bson
 from src.utils.datos_csv import ORIGINALES_DIR, leer_datos
 
-HOY = hoy_local()
+# Día del escenario original, para que los lotes de los CSV sigan siendo utilizables.
+HOY = date(2026, 11, 13)
 COLECCIONES = ("ventas", "detalle_ventas", "recetas", "stock_lotes", "clientes")
 
 
-class StockInsuficiente(Exception):
+class FalloInyectado(RuntimeError):
     pass
-
-
-def descuento_de_prueba(db, id_venta, sesion):
-    venta = db.ventas.find_one({"id_venta": id_venta}, session=sesion)
-    reparto = []
-    for detalle in db.detalle_ventas.find({"id_venta": id_venta}, session=sesion):
-        lote = db.stock_lotes.find_one_and_update(
-            {"id_sucursal": venta["id_sucursal"], "id_producto": detalle["id_producto"],
-             "unidades": {"$gte": detalle["cantidad"]}},
-            {"$inc": {"unidades": -detalle["cantidad"]}}, sort=[("id_lote", 1)], session=sesion)
-        if lote is None:
-            raise StockInsuficiente(f"Sin stock de {detalle['id_producto']} en {venta['id_sucursal']}")
-        reparto.append({"id_producto": detalle["id_producto"], "id_lote": lote["id_lote"],
-                        "unidades": detalle["cantidad"]})
-    return reparto
 
 
 def foto(db):
@@ -50,9 +32,7 @@ def foto(db):
 
 
 def venta(db, *args, **kwargs):
-    kwargs.setdefault("hoy", HOY)
-    kwargs.setdefault("descontar_stock", descuento_de_prueba)
-    return q14(db, *args, **kwargs)
+    return q14(db, *args, hoy=HOY, **kwargs)
 
 
 def rechazo(db, error, *args, **kwargs):
@@ -109,15 +89,25 @@ def verificar(db):
     rechazo(db, "conflicto", "V001", "C004", "F003", "Efectivo",
             [{"id_producto": "PRD001", "cantidad": 1}])  # ID de una venta histórica
 
-    # Receta simple: se completa con su única dispensa.
+    # Receta simple: se confirman cabecera, detalle, dispensa y descuento real.
     antes_rc006 = receta(db, "RC006")
-    r = venta(db, "Q14-V02", "C007", "F006", "Obra social",
-              [{"id_producto": "PRD007", "cantidad": 1}], id_receta="RC006")
+    antes_l014 = unidades(db, "L014")
+    args = ("Q14-V02", "C007", "F006", "Obra social", [{"id_producto": "PRD007", "cantidad": 1}])
+    r = venta(db, *args, id_receta="RC006")
     despues_rc006 = receta(db, "RC006")
     assert (despues_rc006["estado"], despues_rc006["dispensas_realizadas"],
             despues_rc006["proxima_dispensa"]) == ("Completada", 1, None)
-    assert db.ventas.find_one({"id_venta": "Q14-V02"})["tipo"] == "Con receta"
-    evidencia["ventas"].append({"resultado": r, "receta": [antes_rc006, despues_rc006]})
+    cabecera = db.ventas.find_one({"id_venta": "Q14-V02"})
+    assert (cabecera["estado"], cabecera["tipo"], cabecera["id_receta"]) == ("Completada", "Con receta", "RC006")
+    assert r["descuento"] == cabecera["registro"]["descuento"] == [
+        {"id_producto": "PRD007", "id_lote": "L014", "unidades": 1}]
+    assert db.detalle_ventas.count_documents({"id_venta": "Q14-V02", "cantidad": 1, "id_producto": "PRD007"}) == 1
+    assert unidades(db, "L014") == antes_l014 - 1
+    despues = foto(db)
+    assert venta(db, *args, id_receta="RC006") == dict(r, repetida=True)
+    assert foto(db) == despues
+    evidencia["ventas"].append({"resultado": r, "receta": [antes_rc006, despues_rc006],
+                                "lotes": {"L014": [antes_l014, unidades(db, "L014")]}})
 
     # Tratamiento prolongado 1/3 con un producto de venta libre: 2/3 y próxima a 30 días.
     antes_rc004 = receta(db, "RC004")
@@ -182,25 +172,40 @@ def verificar(db):
     # Stock insuficiente con receta: se revierten venta, detalle y receta.
     antes_rc002 = receta(db, "RC002")
     evidencia["rechazos"].append(rechazo(
-        db, StockInsuficiente, "Q14-V05", "C003", "F006", "Obra social",
-        [{"id_producto": "PRD004", "cantidad": 1}, {"id_producto": "PRD003", "cantidad": 10_000}],
+        db, "stock_insuficiente", "Q14-V05", "C003", "F006", "Obra social",
+        [{"id_producto": "PRD003", "cantidad": 1}, {"id_producto": "PRD004", "cantidad": 10_000}],
         id_receta="RC002"))
     assert receta(db, "RC002") == antes_rc002
     assert db.ventas.count_documents({"id_venta": "Q14-V05"}) == 0
 
-    # Fallo inyectado después de descontar un lote: el lote vuelve a su valor.
-    def descuento_que_falla(db, id_venta, sesion):
-        descuento_de_prueba(db, id_venta, sesion)
-        raise RuntimeError("fallo inyectado después de modificar lotes")
+    # Inyectar fallos en el límite entre q14 y q15, con escrituras reales en la sesión.
+    antes_l007 = unidades(db, "L007")
 
-    rechazo(db, RuntimeError, "Q14-V06", "C003", "F006", "Obra social",
-            [{"id_producto": "PRD004", "cantidad": 1}], id_receta="RC002",
-            descontar_stock=descuento_que_falla)
-    assert receta(db, "RC002") == antes_rc002
+    def fallar_despues_de_receta(db, id_venta, sesion):
+        actual = db.recetas.find_one({"id_receta": "RC002"}, session=sesion)
+        assert (actual["estado"], actual["dispensas_realizadas"]) == ("Completada", 3)
+        assert db.ventas.find_one({"id_venta": id_venta}, session=sesion) is not None
+        assert db.detalle_ventas.count_documents({"id_venta": id_venta}, session=sesion) == 1
+        raise FalloInyectado("después de actualizar la receta")
+
+    def fallar_despues_de_stock(db, id_venta, sesion):
+        assert q15(db, id_venta, sesion) == [
+            {"id_producto": "PRD004", "id_lote": "L007", "unidades": 1}]
+        assert db.stock_lotes.find_one({"id_lote": "L007"}, session=sesion)["unidades"] == antes_l007 - 1
+        raise FalloInyectado("después de descontar el lote con q15")
+
+    for id_venta, fallar in (("Q14-F-RECETA", fallar_despues_de_receta), ("Q14-F-STOCK", fallar_despues_de_stock)):
+        error = rechazo(db, FalloInyectado, id_venta, "C003", "F006", "Obra social",
+                        [{"id_producto": "PRD004", "cantidad": 1}], id_receta="RC002",
+                        descontar_stock=fallar)
+        error["receta"] = [antes_rc002, receta(db, "RC002")]
+        error["lotes"] = {"L007": [antes_l007, unidades(db, "L007")]}
+        evidencia["rechazos"].append(error)
 
     # Competencia por la última dispensa de RC002 (2/3): solo una venta prospera.
     hilos = 4
-    barrera = Barrier(hilos)
+    barrera = Barrier(hilos, timeout=10)
+    antes_l006 = unidades(db, "L006")
 
     def competir(n):
         barrera.wait()
@@ -215,10 +220,14 @@ def verificar(db):
         resultados = sorted(ejecutor.map(competir, range(hilos)))
     assert resultados == ["ok"] + ["receta_no_vigente"] * (hilos - 1), resultados
     assert receta(db, "RC002")["dispensas_realizadas"] == 3
+    assert unidades(db, "L006") == antes_l006 - 1
+    ventas_competidoras = {"id_venta": {"$in": [f"Q14-K{n}" for n in range(hilos)]}}
+    assert db.ventas.count_documents(ventas_competidoras) == 1
+    assert db.detalle_ventas.count_documents(ventas_competidoras) == 1
 
     # Reintentos simultáneos de la misma venta: se registra y descuenta una sola vez.
     l001 = unidades(db, "L001")
-    barrera = Barrier(hilos)
+    barrera = Barrier(hilos, timeout=10)
 
     def reintentar(_):
         barrera.wait()
@@ -246,7 +255,7 @@ def main():
             cliente.drop_database(nombre)
     if "--evidencia" in sys.argv:
         print(json.dumps(evidencia, ensure_ascii=False, indent=2, default=a_json))
-    print("q14: OK en MongoDB (con descuento de stock de prueba)")
+    print("q14 y q15: OK en MongoDB (transacción de venta, receta y stock)")
 
 
 if __name__ == "__main__":
