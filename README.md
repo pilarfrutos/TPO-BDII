@@ -67,9 +67,12 @@ python3.12 scripts/loaders/load_mongo.py --reiniciar farmared_importacion
 python3.12 -m unittest discover -s tests
 python3.12 tests/carga/verify_mongo.py
 python3.12 tests/queries/verify.py
+python3.12 tests/servicios/verify_q13.py
 ```
 
-Los dos scripts usan una base temporal de MongoDB y la eliminan al terminar.
+Los scripts usan una base temporal de MongoDB y la eliminan al terminar.
+`verify_q13.py --evidencia` imprime además el antes/después de cada operación
+(ver [docs/evidencias/q13.md](docs/evidencias/q13.md)).
 
 ## Ejecutar una consulta
 
