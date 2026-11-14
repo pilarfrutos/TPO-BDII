@@ -238,6 +238,18 @@ def verificar(db):
     assert repetidas == [False] + [True] * (hilos - 1), repetidas
     assert unidades(db, "L001") == l001 - 1
     assert db.detalle_ventas.count_documents({"id_venta": "Q14-V07"}) == 1
+    evidencia["concurrencia"] = {
+        "ultima_dispensa": {
+            "resultados": resultados,
+            "dispensas_finales": receta(db, "RC002")["dispensas_realizadas"],
+            "ventas_confirmadas": db.ventas.count_documents(ventas_competidoras),
+        },
+        "reintento_misma_venta": {
+            "repetidas": repetidas,
+            "detalles_confirmados": db.detalle_ventas.count_documents({"id_venta": "Q14-V07"}),
+            "unidades_descontadas": l001 - unidades(db, "L001"),
+        },
+    }
     return evidencia
 
 

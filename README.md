@@ -79,6 +79,7 @@ python3.12 tests/queries/verify_t10.py
 python3.12 tests/servicios/verify_q13.py
 python3.12 tests/servicios/verify_q14.py
 python3.12 tests/servicios/verify_q15.py
+python3.12 tests/servicios/verify_t15.py
 ```
 
 Los scripts usan una base temporal de MongoDB y la eliminan al terminar.
@@ -89,6 +90,8 @@ imprimen el antes y el después de las operaciones (ver
 sincroniza el grafo desde la base temporal y comprueba los clientes en Neo4j.
 Al terminar vuelve a publicar la base configurada en `.env`, porque Neo4j
 Community tiene una sola base.
+La prueba de [T15](docs/evidencias/t15.md) reúne concurrencia, reintentos,
+rollback y recuperación de la proyección de Neo4j.
 
 ## Ejecutar una consulta
 
