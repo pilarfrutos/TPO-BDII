@@ -119,16 +119,16 @@ def modificar(db, id_cliente, *, email=_NO_INFORMADO, telefono=_NO_INFORMADO,
                for campo in ("email", "telefono") if campo in informados}
 
     for _ in range(_INTENTOS):
-        antes = _buscar(db, id_cliente)
-        if not antes["activo"]:
+        leido = _buscar(db, id_cliente)
+        if not leido["activo"]:
             raise ErrorCliente("inactivo", f"El cliente {id_cliente} está dado de baja; "
                                            "reactivalo antes de modificarlo")
         if "obra_social" in informados or "nro_afiliado" in informados:
-            nueva_obra = informados.get("obra_social", antes["obra_social"])
+            nueva_obra = informados.get("obra_social", leido["obra_social"])
             if "nro_afiliado" in informados:
                 nuevo_nro = informados["nro_afiliado"]
-            elif nueva_obra == antes["obra_social"]:
-                nuevo_nro = antes["nro_afiliado"]
+            elif nueva_obra == leido["obra_social"]:
+                nuevo_nro = leido["nro_afiliado"]
             else:
                 # El número anterior pertenece a otra obra social: no se arrastra.
                 nuevo_nro = None
@@ -136,11 +136,11 @@ def modificar(db, id_cliente, *, email=_NO_INFORMADO, telefono=_NO_INFORMADO,
         # La cobertura se valida contra el estado leído: si otro proceso lo cambió
         # entre la lectura y la escritura, el filtro no coincide y se reintenta.
         filtro = {"id_cliente": id_cliente, "activo": True,
-                  "obra_social": antes["obra_social"], "nro_afiliado": antes["nro_afiliado"]}
-        despues = db.clientes.find_one_and_update(filtro, {"$set": cambios}, projection={"_id": 0},
-                                                  return_document=ReturnDocument.AFTER)
-        if despues is not None:
-            return {"operacion": "modificacion", "antes": antes, "despues": despues}
+                  "obra_social": leido["obra_social"], "nro_afiliado": leido["nro_afiliado"]}
+        antes = db.clientes.find_one_and_update(filtro, {"$set": cambios}, projection={"_id": 0},
+                                                return_document=ReturnDocument.BEFORE)
+        if antes is not None:
+            return {"operacion": "modificacion", "antes": antes, "despues": dict(antes, **cambios)}
     raise ErrorCliente("conflicto", f"El cliente {id_cliente} cambió durante la modificación; "
                                     "reintentá la operación")
 

@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import sys
 from threading import Barrier
+from unittest.mock import patch
 from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -38,6 +39,31 @@ def rechazo(codigo, db, operacion, **argumentos):
         return {"operacion": operacion, "argumentos": argumentos, "codigo": exc.codigo,
                 "mensaje": str(exc)}
     raise AssertionError(f"{operacion} {argumentos} debía rechazarse con {codigo}")
+
+
+def verificar_modificaciones_concurrentes(db):
+    filtro = {"id_cliente": NUEVO["id_cliente"]}
+    original = db.clientes.find_one(filtro, {"_id": 0})
+    barrera = Barrier(2, timeout=10)
+    coleccion = type(db.clientes)
+    actualizar = coleccion.find_one_and_update
+
+    def actualizar_tras_ambas_lecturas(self, *args, **kwargs):
+        barrera.wait()
+        return actualizar(self, *args, **kwargs)
+
+    def cambiar(telefono):
+        return q13(db, "modificar", **filtro, telefono=telefono)
+
+    # Forzar que ambas llamadas lleguen a la escritura con la misma lectura previa.
+    with patch.object(coleccion, "find_one_and_update", actualizar_tras_ambas_lecturas):
+        with ThreadPoolExecutor(2) as ejecutor:
+            resultados = list(ejecutor.map(cambiar, ("1144556601", "1144556602")))
+    primero = next(r for r in resultados if r["antes"] == original)
+    segundo = next(r for r in resultados if r is not primero)
+    assert primero["despues"] == segundo["antes"], resultados
+    assert segundo["despues"] == db.clientes.find_one(filtro, {"_id": 0}), resultados
+    return [primero, segundo]
 
 
 def verificar(client, db):
@@ -92,6 +118,7 @@ def verificar(client, db):
     assert resultado["despues"] == dict(resultado["antes"], email="martin.gomez@example.com",
                                         telefono="3415000000")
     evidencia.append(resultado)
+    evidencia.extend(verificar_modificaciones_concurrentes(db))
 
     # Cobertura: pasar a 'Sin cobertura' vacía el afiliado; cambiar de obra lo exige.
     resultado = q13(db, "modificar", id_cliente="C001", obra_social="Sin cobertura")
