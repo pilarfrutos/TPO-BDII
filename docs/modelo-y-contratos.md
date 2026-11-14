@@ -226,7 +226,7 @@ Firmas propuestas para revisar con A y C.
 
 ```python
 q14(db, id_venta, id_cliente, id_farmaceutico, medio_pago, items, id_receta=None)
-q15(db, id_venta, sesion)
+q15(db, id_venta, sesion=None)
 ```
 
 - El día de negocio se calcula en `America/Argentina/Buenos_Aires`. Una fecha
@@ -240,7 +240,8 @@ q15(db, id_venta, sesion)
   Guarda el precio vigente y devuelve `id_venta` y `total` una vez confirmada
   la operación.
   El día se determina una vez por operación, también ante reintentos del driver.
-- q15 recibe el ID de venta y la misma sesión activa de q14. Lee la venta y sus
+- q15 recibe el ID de venta y usa la sesión activa de q14 si se le pasa una.
+  Para una ejecución autónoma abre su propia transacción. Lee la venta y sus
   detalles, agrupa cantidades por producto y consume lotes de su sucursal por
   vencimiento ascendente y luego por `id_lote`. Un rechazo de stock se propaga
   a q14 para revertir la operación completa. q15 devuelve el reparto del
@@ -249,9 +250,11 @@ q15(db, id_venta, sesion)
 - Propuesta de reintento: la misma clave con los mismos argumentos devuelve
   el resultado de la operación anterior; reutilizarla con otros argumentos
   da conflicto. La protección se persiste junto con la venta y el descuento.
-  q15 no se expone como un descuento independiente; si se ofrece por terminal
-  para una venta existente, debe usar la misma protección transaccional para
-  evitar un segundo descuento.
+  q15 puede ejecutarse por terminal para una venta completada con fecha, sede,
+  detalles y `registro.stock_pendiente: true`. Aplica FEFO con lotes vigentes
+  tanto en la fecha de venta como en la de aplicación. Guarda el reparto y
+  retira la marca en la misma transacción. Las ventas
+  históricas de los CSV carecen de esa marca porque su stock ya está consolidado.
 - La dispensa se cuenta una vez por venta con receta. En tratamientos
   prolongados, la próxima se fija a 30 días mientras queden dispensas; al
   completar la receta se limpia la fecha. RC002 se conserva tal como vino.
@@ -280,5 +283,5 @@ Falta que A, B y C confirmen que el código refleja lo acordado.
 | Errores | q14 lanza `ErrorVenta` y q15 lanza `ErrorStock`, ambos con `codigo` (por ejemplo `receta_no_vigente` o `stock_insuficiente`). q14 propaga los de q15 sin cambios. | Confirmación de A, B y C. |
 | Reintentos | `id_venta` es la clave. La misma solicitud devuelve `repetida: true`; otra solicitud con el mismo ID da `conflicto`. q15 devuelve `registro.descuento` si ya existe. | Confirmación de A, B y C. |
 | Lote que vence hoy | Utilizable: q15 filtra `vencimiento >= fecha de la venta` (D5). | — |
-| q15 por terminal | Solo se ejecuta dentro de la transacción de q14 y exige una sesión activa. | Definir en T16 y consultar a la cátedra (D7). |
+| q15 por terminal | Aplica el descuento si la venta es elegible o devuelve el reparto aplicado. Usa una transacción propia y deja la venta pendiente de stock si la operación falla. | Confirmación de la interpretación con la cátedra (D7). |
 | Vigencia de receta, `proxima_dispensa` y varios productos | Vigente = `estado == 'Vigente'` con dispensas disponibles (D3). `proxima_dispensa` no bloquea (D4). Una receta cubre todos los productos bajo receta de la venta y cuenta una dispensa (D6). | Respuesta de la cátedra a D3 y D4. |

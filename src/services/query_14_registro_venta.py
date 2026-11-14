@@ -202,6 +202,7 @@ def q14(db, id_venta, id_cliente, id_farmaceutico, medio_pago, items, id_receta=
             "estado": "Completada",
             # Sucursal de la operación, para no depender de la asignación futura (q10).
             "id_sucursal": farmaceutico["id_sucursal"],
+            "registro": {"stock_pendiente": True},
         }
         db.ventas.insert_one(dict(venta), session=sesion)
         db.detalle_ventas.insert_many([dict(d) for d in detalle], session=sesion)

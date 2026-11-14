@@ -68,16 +68,13 @@ class RunQueryExecutionTest(unittest.TestCase):
         consulta.assert_called_once_with(
             db, "modificar", id_cliente="C001", telefono="1155550000")
 
-    def test_q15_abre_una_transaccion(self):
+    def test_q15_delega_al_servicio_autonomo(self):
         args = run_query.crear_parser().parse_args(["15", "--id-venta", "CLI-V01"])
         db = MagicMock()
-        sesion = MagicMock()
-        db.client.start_session.return_value.__enter__.return_value = sesion
-        sesion.with_transaction.side_effect = lambda funcion: funcion(sesion)
         with patch.object(run_query, "q15", return_value=[{"id_lote": "L001"}]) as consulta:
             resultado = run_query.ejecutar_mongo(db, args)
         self.assertEqual(resultado, [{"id_lote": "L001"}])
-        consulta.assert_called_once_with(db, "CLI-V01", sesion)
+        consulta.assert_called_once_with(db, "CLI-V01")
 
     def test_error_de_dominio_es_legible_y_conserva_codigo(self):
         salida = StringIO()

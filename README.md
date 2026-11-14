@@ -133,9 +133,14 @@ como JSON. Usá `python3.12 scripts/run_query.py q13 --help` para ver las
 operaciones `alta`, `modificar`, `baja` y `reactivar`; cada operación también
 tiene ayuda propia. En q14, repetí `--item PRODUCTO:CANTIDAD` para agregar
 productos y usá `--id-receta` cuando corresponda. q14 registra la venta y llama
-a q15 en la misma transacción. El comando q15 permite comprobar o reintentar de
-forma idempotente el descuento de una venta ya registrada por q14; no reemplaza
-el registro de la venta. q13 y q14 modifican MongoDB, por lo que conviene usar
+a q15 en la misma transacción. El comando q15 aplica FEFO a una venta completada
+que ya tiene sus ítems, fecha, sucursal histórica y `registro.stock_pendiente: true`.
+La marca indica que queda pendiente aplicar stock. Si hay un reparto guardado,
+q15 lo devuelve sin otro descuento. Las ventas importadas representan historia
+consolidada y quedan fuera de la operación. Para reproducir el caso autónomo,
+ejecutá `python3.12 tests/servicios/verify_q15.py --evidencia`. La prueba prepara
+una venta elegible en su base temporal y verifica el antes y el después.
+q13, q14 y q15 pueden modificar MongoDB, por lo que conviene usar
 identificadores propios como los de los ejemplos. Los cambios de q13 aparecen
 en Neo4j en el siguiente refresco de la proyección.
 

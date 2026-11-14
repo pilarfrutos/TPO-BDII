@@ -125,9 +125,9 @@ def crear_parser():
                      help="Ítem de venta; se puede repetir.")
     p14.add_argument("--id-receta", help="Obligatoria si algún producto requiere receta.")
 
-    p15 = _consulta(subparsers, 15, "consultar/reintentar el descuento FEFO de una venta")
+    p15 = _consulta(subparsers, 15, "aplicar o consultar el descuento FEFO de una venta")
     p15.add_argument("--id-venta", required=True,
-                     help="Venta registrada por q14; q15 se ejecuta transaccionalmente.")
+                     help="Venta completada con descuento pendiente o reparto ya aplicado.")
     return parser
 
 
@@ -151,8 +151,7 @@ def ejecutar_mongo(db, args):
         return q14(db, args.id_venta, args.id_cliente, args.id_farmaceutico,
                    args.medio_pago, args.item, id_receta=args.id_receta)
     if args.consulta == "q15":
-        with db.client.start_session() as sesion:
-            return sesion.with_transaction(lambda activa: q15(db, args.id_venta, activa))
+        return q15(db, args.id_venta)
     return CONSULTAS[args.consulta](db)
 
 
