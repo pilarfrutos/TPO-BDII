@@ -19,9 +19,10 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from src.utils.datos_csv import ENTIDADES, leer_datos, para_mongo, resumen
+from src.utils.datos_csv import ENTIDADES, ENTEROS, leer_datos, para_mongo, resumen
 from src.utils.datos_mongo import leer_snapshot
 from src.utils.proyeccion_neo4j import preparar_proyeccion
+from src.utils.reglas_negocio import DOMINIOS, MAX_DISPENSAS, MINIMOS, TRATAMIENTO_PROLONGADO
 
 INDICES_UNICOS = {"clientes": ["dni"], "farmaceuticos": ["matricula"]}
 INDICES_CONSULTAS = {
@@ -59,6 +60,34 @@ def crear_indices(db):
             ) from exc
 
 
+def instalar_validadores(db):
+    """Aplica restricciones locales también a colecciones de cargas previas."""
+    for nombre, (_, _, encabezado) in ENTIDADES.items():
+        campos = {campo: {"bsonType": "string", "enum": sorted(valores)}
+                  for campo, valores in DOMINIOS.get(nombre, {}).items()}
+        campos.update({
+            campo: {"bsonType": ["int", "long"], "minimum": MINIMOS.get(campo, 0)}
+            for campo in sorted(ENTEROS.intersection(encabezado.split()))
+        })
+        validador = {"$jsonSchema": {"bsonType": "object", "required": list(campos),
+                                    "properties": campos}}
+        if nombre == "recetas":
+            validador["$expr"] = {"$and": [
+                {"$lte": ["$dispensas_autorizadas", {"$cond": [
+                    {"$eq": ["$tipo", TRATAMIENTO_PROLONGADO]}, MAX_DISPENSAS, 1,
+                ]}]},
+                {"$lte": ["$dispensas_realizadas", "$dispensas_autorizadas"]},
+                {"$or": [{"$ne": ["$estado", "Vigente"]},
+                         {"$lt": ["$dispensas_realizadas", "$dispensas_autorizadas"]}]},
+                {"$or": [{"$ne": ["$estado", "Completada"]}, {"$and": [
+                    {"$eq": ["$dispensas_realizadas", "$dispensas_autorizadas"]},
+                    {"$in": [{"$ifNull": ["$proxima_dispensa", None]}, [None, ""]]},
+                ]}]},
+            ]}
+        db.command("collMod", nombre, validator=validador, validationLevel="strict",
+                   validationAction="error")
+
+
 def cargar(db, datos):
     """Inserta los registros ausentes por ID de origen; no modifica los existentes.
 
@@ -67,6 +96,7 @@ def cargar(db, datos):
     from pymongo import UpdateOne
 
     crear_indices(db)
+    instalar_validadores(db)
     conteos = {}
     for nombre, filas in datos.items():
         clave = ENTIDADES[nombre][1]
@@ -142,7 +172,7 @@ def imprimir_verificacion(informe, problemas):
                  f"{len(datos['faltantes'])} faltantes")
         if datos["modificados"]:
             detalle = "; ".join(f"{i} ({', '.join(c)})" for i, c in datos["modificados"].items())
-            linea += f"; modificados por operaciones: {detalle}"
+            linea += f"; diferencias con CSV: {detalle}"
         if datos["propios"]:
             linea += f"; propios de la base: {', '.join(map(str, datos['propios']))}"
         print(linea)

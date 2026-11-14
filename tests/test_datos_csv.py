@@ -16,7 +16,7 @@ def escribir(directorio, nombre, filas):
 
 CLIENTE = dict(id_cliente="T05-C01", nombre="Prueba", apellido="Carga", dni="99000001",
                email="prueba@example.com", telefono="1100000000", ciudad="CABA",
-               provincia="Buenos Aires", obra_social="Particular", nro_afiliado="", activo="True")
+               provincia="Buenos Aires", obra_social="Sin cobertura", nro_afiliado="", activo="True")
 VENTA = dict(id_venta="T05-V01", id_cliente="T05-C01", id_farmaceutico="F001", id_receta="",
              fecha="2026-11-01", tipo="Venta libre", medio_pago="Efectivo", total="3000",
              estado="Completada")
@@ -86,6 +86,28 @@ class LecturaCsvTest(unittest.TestCase):
             self.leer()
         (self.adicionales / "detalle_ventas.csv").unlink()
         with self.assertRaisesRegex(ValueError, "T05-V01: total inconsistente"):
+            self.leer()
+
+    def test_rechaza_dominios_contadores_y_receta_ajena(self):
+        datos = leer_datos([ORIGINALES_DIR])
+        casos = (
+            ("productos", "id_producto", {"condicion_venta": "Bajo recetaa"}, "condicion_venta"),
+            ("recetas", "id_receta", {"dispensas_autorizadas": 4}, "dispensas_autorizadas"),
+            ("stock_lotes", "id_lote", {"unidades": -1}, r"unidades: mínimo 0"),
+        )
+        for nombre, clave, cambios, mensaje in casos:
+            with self.subTest(nombre=nombre):
+                fila = {campo: "" if valor is None else str(valor)
+                        for campo, valor in datos[nombre][0].items()}
+                escribir(self.adicionales, nombre, [dict(fila, **{clave: "H04"}, **cambios)])
+                with self.assertRaisesRegex(ValueError, mensaje):
+                    self.leer()
+                (self.adicionales / f"{nombre}.csv").unlink()
+
+        escribir(self.adicionales, "ventas",
+                 [dict(VENTA, id_cliente="C001", tipo="Con receta", id_receta="RC005")])
+        escribir(self.adicionales, "detalle_ventas", [DETALLE])
+        with self.assertRaisesRegex(ValueError, "RC005 pertenece a otro cliente"):
             self.leer()
 
     def test_rechaza_encabezado_distinto(self):

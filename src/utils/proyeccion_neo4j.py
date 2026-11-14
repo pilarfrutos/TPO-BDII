@@ -2,6 +2,7 @@
 from datetime import date, datetime, timezone
 
 from src.utils.datos_csv import ENTIDADES, ENTEROS, FECHAS, NULOS, validar_referencias
+from src.utils.reglas_negocio import validar_negocio
 
 
 def _normalizar_valor(nombre, identificador, campo, valor):
@@ -72,4 +73,5 @@ def preparar_proyeccion(datos):
         if id_sucursal is not None and id_sucursal not in sucursales:
             raise ValueError(f"ventas[{venta['id_venta']}].id_sucursal: referencia inexistente "
                              f"en sucursales ({id_sucursal!r})")
+    validar_negocio(proyeccion, ENTIDADES, ENTEROS)
     return proyeccion

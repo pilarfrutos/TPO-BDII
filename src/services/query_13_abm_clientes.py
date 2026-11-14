@@ -21,7 +21,8 @@ proyección desde MongoDB (T06).
 """
 import re
 
-COBERTURAS = {"OSDE", "Swiss Medical", "PAMI", "IOMA", "Galeno", "Sin cobertura"}
+from src.utils.reglas_negocio import COBERTURAS
+
 SIN_COBERTURA = "Sin cobertura"
 CAMPOS_MODIFICABLES = ("email", "telefono", "obra_social", "nro_afiliado")
 _NO_INFORMADO = object()

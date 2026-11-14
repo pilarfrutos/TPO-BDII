@@ -30,9 +30,11 @@ from datetime import timedelta
 
 from src.services.query_15_descuento_stock import q15
 from src.utils.calendario import fecha_bson, hoy_local
+from src.utils.reglas_negocio import (
+    BAJO_RECETA, MEDIOS_PAGO, TRATAMIENTO_PROLONGADO, validar_dispensas,
+    validar_producto_para_venta,
+)
 
-MEDIOS_PAGO = {"Efectivo", "Débito", "Crédito", "Transferencia", "Obra social"}
-BAJO_RECETA = {"Bajo receta", "Bajo receta archivada"}
 DIAS_ENTRE_DISPENSAS = 30
 
 
@@ -107,6 +109,10 @@ def _validar_y_preparar(db, sesion, solicitud):
             raise ErrorVenta("producto_inexistente", f"No existe el producto {id_producto}")
         if not productos[id_producto]["activo"]:
             raise ErrorVenta("producto_inactivo", f"El producto {id_producto} está discontinuado")
+        try:
+            validar_producto_para_venta(productos[id_producto])
+        except ValueError as exc:
+            raise ErrorVenta("producto_invalido", f"{id_producto}: {exc}") from exc
 
     con_receta = sorted(i for i in ids if productos[i]["condicion_venta"] in BAJO_RECETA)
     receta = None
@@ -126,16 +132,17 @@ def _validar_y_preparar(db, sesion, solicitud):
         if receta["estado"] != "Vigente":
             raise ErrorVenta("receta_no_vigente",
                              f"La receta {receta['id_receta']} está {receta['estado']}")
-        if receta["dispensas_realizadas"] >= receta["dispensas_autorizadas"]:
-            raise ErrorVenta("receta_no_vigente",
-                             f"La receta {receta['id_receta']} no tiene dispensas disponibles")
+        try:
+            validar_dispensas(receta)
+        except ValueError as exc:
+            raise ErrorVenta("receta_invalida", f"{receta['id_receta']}: {exc}") from exc
     return farmaceutico, productos, receta
 
 
 def _dispensar(db, sesion, receta, hoy):
     """Registra una dispensa; el filtro evita aplicarla sobre un estado distinto al leído."""
     realizadas = receta["dispensas_realizadas"] + 1
-    prolongado = receta["tipo"] == "Tratamiento prolongado"
+    prolongado = receta["tipo"] == TRATAMIENTO_PROLONGADO
     completa = not prolongado or realizadas >= receta["dispensas_autorizadas"]
     cambios = {
         "dispensas_realizadas": realizadas,

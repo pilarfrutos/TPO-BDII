@@ -4,11 +4,15 @@ Uso: python tests/carga/verify_mongo.py
 """
 from pathlib import Path
 import sys
+from unittest import TestCase
 from uuid import uuid4
+
+from pymongo.errors import DuplicateKeyError, WriteError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.check_connections import conectar_mongo
 from scripts.loaders.load_mongo import ENTIDADES, cargar, reiniciar, verificar
+from src.services.query_14_registro_venta import ErrorVenta, q14
 from src.utils.datos_csv import leer_datos, para_mongo
 from src.utils.datos_mongo import leer_snapshot
 from src.utils.proyeccion_neo4j import preparar_proyeccion
@@ -40,7 +44,6 @@ def verificar_carga(client, db):
     assert lotes == {l["id_lote"]: l["unidades"] for l in datos["stock_lotes"]}
 
     # 3. Índices únicos de ID, DNI y matrícula.
-    from pymongo.errors import DuplicateKeyError
     duplicados = (
         ("clientes", {"id_cliente": "DUP-C"}),        # mismo DNI que C001
         ("farmaceuticos", {"id_farmaceutico": "DUP-F"}),  # misma matrícula que F001
@@ -55,7 +58,8 @@ def verificar_carga(client, db):
 
     # 4. Operaciones de negocio: la recarga no las pisa y la verificación las informa.
     db.stock_lotes.update_one({"id_lote": "L001"}, {"$inc": {"unidades": -3}})
-    db.recetas.update_one({"id_receta": "RC006"}, {"$set": {"dispensas_realizadas": 1}})
+    db.recetas.update_one({"id_receta": "RC006"},
+                          {"$set": {"dispensas_realizadas": 1, "estado": "Completada"}})
     db.clientes.update_one({"id_cliente": "C003"}, {"$set": {"activo": False}})
     nuevo = para_mongo(dict(datos["clientes"][0], id_cliente="Q13-C01", dni="99999999"))
     db.clientes.insert_one(nuevo)
@@ -66,7 +70,7 @@ def verificar_carga(client, db):
     informe, problemas = verificar(client, db, datos)
     assert problemas == [], problemas
     assert informe["stock_lotes"]["modificados"] == {"L001": ["unidades"]}
-    assert informe["recetas"]["modificados"] == {"RC006": ["dispensas_realizadas"]}
+    assert informe["recetas"]["modificados"] == {"RC006": ["dispensas_realizadas", "estado"]}
     assert informe["clientes"]["modificados"] == {"C003": ["activo"]}
     assert informe["clientes"]["propios"] == ["Q13-C01"]
 
@@ -115,10 +119,40 @@ def verificar_transicion(client, db):
     assert db.ventas.find_one({"id_venta": "V001"})["fecha"] == para_mongo(datos["ventas"][0])["fecha"]
 
 
+def verificar_reglas(client, db):
+    datos = leer_datos()
+    # Simula una colección preexistente a la incorporación de validadores.
+    db.productos.insert_one(para_mongo(dict(datos["productos"][0], condicion_venta="Bajo recetaa")))
+    cargar(db, datos)
+    with TestCase().assertRaises(ErrorVenta) as rechazo:
+        q14(db, "H04-V", "C001", "F001", "Efectivo", [{"id_producto": "PRD001", "cantidad": 1}])
+    assert rechazo.exception.codigo == "producto_invalido"
+    assert db.ventas.find_one({"id_venta": "H04-V"}) is None
+
+    for coleccion, filtro, campos in (
+        (db.productos, {"id_producto": "PRD002"}, {"condicion_venta": "Bajo recetaa"}),
+        (db.stock_lotes, {"id_lote": "L001"}, {"unidades": -1}),
+        (db.stock_lotes, {"id_lote": "L001"}, {"unidades": 1.5}),
+        (db.recetas, {"id_receta": "RC002"}, {"dispensas_autorizadas": 4}),
+        (db.recetas, {"id_receta": "RC006"}, {"dispensas_realizadas": 1}),
+    ):
+        with TestCase().assertRaises(WriteError) as rechazo:
+            coleccion.update_one(filtro, {"$set": campos})
+        assert rechazo.exception.code == 121
+
+    db.stock_lotes.update_one({"id_lote": "L001"}, {"$set": {"unidades": -1}},
+                              bypass_document_validation=True)
+    db.ventas.update_one({"id_venta": "V003"}, {"$set": {"total": 1, "id_receta": "RC005"}})
+    _, problemas = verificar(client, db, datos)
+    for mensaje in ("PRD001].condicion_venta", "L001].unidades", "V003: total inconsistente",
+                    "V003].id_receta: RC005 pertenece a otro cliente"):
+        assert any(mensaje in p for p in problemas), problemas
+
+
 def main():
     cliente, _ = conectar_mongo()
     with cliente:
-        for prueba in (verificar_carga, verificar_transicion):
+        for prueba in (verificar_carga, verificar_transicion, verificar_reglas):
             nombre = f"farmared_test_carga_{uuid4().hex}"
             try:
                 prueba(cliente, cliente[nombre])

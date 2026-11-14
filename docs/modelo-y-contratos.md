@@ -68,7 +68,13 @@ conectar, y un error indica el archivo y la línea.
   se lee un snapshot y se informa por colección: faltantes (error), documentos
   modificados con sus campos (esperable tras operaciones), documentos propios
   de la base (altas de q13/q14), IDs repetidos y documentos que no cumplen el
-  contrato de tipos y referencias de `preparar_proyeccion`.
+  contrato de tipos, referencias y reglas de negocio de `preparar_proyeccion`.
+  También comprueba que cada receta vinculada pertenezca al cliente de la
+  venta y que el total coincida con los ítems.
+- **Validadores de MongoDB.** La carga instala validadores de colección para
+  dominios, enteros, mínimos y coherencia de dispensas. También los aplica a
+  colecciones existentes. Los documentos previos se conservan y se revisan
+  con `--verificar`. Las reglas entre colecciones se controlan en la aplicación.
 - **Reinicio explícito.** `--reiniciar NOMBRE_BASE` borra solo las nueve
   colecciones y vuelve a cargar. Exige el nombre de la base configurada, para
   no ejecutarlo contra otra por error.

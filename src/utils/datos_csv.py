@@ -3,6 +3,7 @@ from datetime import date
 from pathlib import Path
 
 from src.utils.calendario import fecha_bson
+from src.utils.reglas_negocio import validar_negocio
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 # CSV de la cátedra: nunca se modifican.
@@ -77,8 +78,6 @@ def _leer_csv(ruta, nombre):
                     tipada[campo] = None
                 elif campo in ENTEROS:
                     tipada[campo] = int(valor)
-                    if tipada[campo] < 0 or (campo == "cantidad" and tipada[campo] == 0):
-                        raise ValueError(f"{origen}:{campo}: cantidad inválida")
                 elif campo in FECHAS:
                     tipada[campo] = date.fromisoformat(valor)
                     if tipada[campo].isoformat() != valor:
@@ -120,13 +119,7 @@ def leer_datos(directorios=(ORIGINALES_DIR, ADICIONALES_DIR)):
         if len(valores) != len(set(valores)):
             raise ValueError(f"{nombre}: {campo} repetido")
     validar_referencias(datos)
-    totales = {}
-    for detalle in datos["detalle_ventas"]:
-        totales[detalle["id_venta"]] = (totales.get(detalle["id_venta"], 0)
-                                        + detalle["cantidad"] * detalle["precio_unit"])
-    for venta in datos["ventas"]:
-        if totales.get(venta["id_venta"]) != venta["total"]:
-            raise ValueError(f"{venta['id_venta']}: total inconsistente")
+    validar_negocio(datos, ENTIDADES, ENTEROS)
     return datos
 
 
