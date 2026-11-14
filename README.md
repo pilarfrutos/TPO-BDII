@@ -108,6 +108,14 @@ python3.12 scripts/run_query.py 9
 python3.12 scripts/run_query.py q10 --id-sucursal S002
 python3.12 scripts/run_query.py 11
 python3.12 scripts/run_query.py q12
+python3.12 scripts/run_query.py q13 alta \
+  --id-cliente CLI-C01 --nombre Ada --apellido Lovelace --dni 50999999 \
+  --email ada@example.com --telefono 1155559999 --ciudad CABA \
+  --provincia "Buenos Aires" --obra-social "Sin cobertura"
+python3.12 scripts/run_query.py q14 \
+  --id-venta CLI-V01 --id-cliente C001 --id-farmaceutico F001 \
+  --medio-pago Efectivo --item PRD001:1
+python3.12 scripts/run_query.py q15 --id-venta CLI-V01
 ```
 
 q03, q04, q06, q10 y q12 refrescan la proyección desde MongoDB antes de consultar Neo4j.
@@ -119,6 +127,21 @@ los [clientes con más de una receta](docs/evidencias/q04.md), las
 Los ejemplos de q02, q05 y q09 están en las
 [evidencias de T10](docs/evidencias/t10.md).
 q06 y q12 usan la fecha actual de Buenos Aires.
+
+Cada consulta acepta su número (`3`) o código (`q03`) y muestra el resultado
+como JSON. Usá `python3.12 scripts/run_query.py q13 --help` para ver las
+operaciones `alta`, `modificar`, `baja` y `reactivar`; cada operación también
+tiene ayuda propia. En q14, repetí `--item PRODUCTO:CANTIDAD` para agregar
+productos y usá `--id-receta` cuando corresponda. q14 registra la venta y llama
+a q15 en la misma transacción. El comando q15 permite comprobar o reintentar de
+forma idempotente el descuento de una venta ya registrada por q14; no reemplaza
+el registro de la venta. q13 y q14 modifican MongoDB, por lo que conviene usar
+identificadores propios como los de los ejemplos. Los cambios de q13 aparecen
+en Neo4j en el siguiente refresco de la proyección.
+
+Los errores usan siempre el formato `ERROR qNN [codigo]: mensaje`, se escriben
+en stderr y devuelven código de salida `1`. La configuración se toma de `.env`
+y nunca se imprime una URI ni una contraseña.
 
 ## Detener las bases
 
