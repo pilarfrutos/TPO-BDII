@@ -23,10 +23,12 @@ repetirla con otros argumentos se rechaza con `conflicto`.
 
 Devuelve {"id_venta", "fecha", "total", "id_receta", "receta", "descuento",
 "repetida"}. Los rechazos de validación lanzan ErrorVenta con un `codigo`; los
-de stock los lanza q15 y se propagan sin cambios.
+de stock los lanza q15 como ErrorStock (también con `codigo`, por ejemplo
+`stock_insuficiente`) y se propagan sin cambios.
 """
 from datetime import timedelta
 
+from src.services.query_15_descuento_stock import q15
 from src.utils.calendario import fecha_bson, hoy_local
 
 MEDIOS_PAGO = {"Efectivo", "Débito", "Crédito", "Transferencia", "Obra social"}
@@ -38,12 +40,6 @@ class ErrorVenta(ValueError):
     def __init__(self, codigo, mensaje):
         super().__init__(mensaje)
         self.codigo = codigo
-
-
-def _descuento_q15():
-    # q15 (T12) vive en su propio módulo; se importa al usarse para no acoplar la carga.
-    from src.services.query_15_descuento_stock import q15
-    return q15
 
 
 def _texto(campo, valor):
@@ -184,7 +180,7 @@ def q14(db, id_venta, id_cliente, id_farmaceutico, medio_pago, items, id_receta=
 
     solicitud = _normalizar(id_venta, id_cliente, id_farmaceutico, medio_pago, items, id_receta)
     hoy = hoy if hoy is not None else hoy_local()
-    descontar_stock = descontar_stock or _descuento_q15()
+    descontar_stock = descontar_stock or q15
 
     def registrar(sesion):
         previa = _repetida(db, sesion, solicitud)

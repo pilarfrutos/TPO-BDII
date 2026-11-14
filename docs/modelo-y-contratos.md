@@ -271,7 +271,14 @@ con la solicitud, la dispensa y el descuento para los reintentos en MongoDB.
 
 ## Validaciones pendientes con el equipo
 
-| Integrantes | Acuerdo pendiente |
-| --- | --- |
-| A, B y C | Confirmar firmas, retornos, errores y regla de reintento de q14/q15. Resolver el vencimiento del lote en el día y cómo ejecutar q15 desde la terminal. |
-| A, B y C | Acordar criterios de vigencia de una receta sin fecha de vencimiento, si se puede dispensar antes de `proxima_dispensa` y cuándo una venta puede usar una receta para varios productos. |
+Las propuestas de esta sección ya están implementadas en q14 y q15 (T12–T14).
+Falta que A, B y C confirmen que el código refleja lo acordado.
+
+| Tema | Cómo quedó implementado | Pendiente |
+| --- | --- | --- |
+| Firmas y retornos de q14/q15 | Las de arriba. q14 devuelve `id_venta`, `fecha`, `total`, `id_receta`, `receta`, `descuento` y `repetida`. q15 devuelve el reparto por producto y lote. | Confirmación de A, B y C. |
+| Errores | q14 lanza `ErrorVenta` y q15 lanza `ErrorStock`, ambos con `codigo` (por ejemplo `receta_no_vigente` o `stock_insuficiente`). q14 propaga los de q15 sin cambios. | Confirmación de A, B y C. |
+| Reintentos | `id_venta` es la clave. La misma solicitud devuelve `repetida: true`; otra solicitud con el mismo ID da `conflicto`. q15 devuelve `registro.descuento` si ya existe. | Confirmación de A, B y C. |
+| Lote que vence hoy | Utilizable: q15 filtra `vencimiento >= fecha de la venta` (D5). | — |
+| q15 por terminal | Solo se ejecuta dentro de la transacción de q14 y exige una sesión activa. | Definir en T16 y consultar a la cátedra (D7). |
+| Vigencia de receta, `proxima_dispensa` y varios productos | Vigente = `estado == 'Vigente'` con dispensas disponibles (D3). `proxima_dispensa` no bloquea (D4). Una receta cubre todos los productos bajo receta de la venta y cuenta una dispensa (D6). | Respuesta de la cátedra a D3 y D4. |

@@ -1,20 +1,26 @@
 """Verifica q13 (ABM de clientes) en una base temporal que se elimina al final.
 
-Uso: python tests/servicios/verify_q13.py [--evidencia]
+Uso: python tests/servicios/verify_q13.py [--evidencia] [--neo4j]
 Con --evidencia imprime en JSON el antes/después de cada operación y los rechazos.
+Con --neo4j además sincroniza Neo4j desde la base temporal con `sincronizar_grafo`
+(T06), comprueba el grafo y al terminar lo vuelve a sincronizar desde la base
+configurada en .env. Neo4j Community tiene una sola base: no lo uses mientras
+otra persona consulta el grafo.
 """
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
 from pathlib import Path
 import sys
 from threading import Barrier
 from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scripts.check_connections import conectar_mongo
+from scripts.check_connections import conectar_mongo, conectar_neo4j
 from scripts.loaders.load_mongo import cargar
 from src.services.query_13_abm_clientes import ErrorCliente, q13
-from src.utils.datos_csv import ORIGINALES_DIR, leer_datos
+from src.services.sincronizacion_neo4j import ErrorSincronizacion, sincronizar_grafo
+from src.utils.datos_csv import leer_datos
 from src.utils.datos_mongo import leer_snapshot
 from src.utils.proyeccion_neo4j import preparar_proyeccion
 
@@ -37,7 +43,7 @@ def rechazo(codigo, db, operacion, **argumentos):
 
 
 def verificar(client, db):
-    cargar(db, leer_datos([ORIGINALES_DIR]))
+    cargar(db, leer_datos())  # Originales y adicionales de T07.
     evidencia = []
     iniciales = db.clientes.count_documents({})
 
@@ -50,6 +56,10 @@ def verificar(client, db):
     evidencia.append(rechazo("dni_duplicado", db, "alta", **dict(NUEVO, id_cliente="Q13-C02",
                                                                  dni="31245678")))
     rechazo("id_duplicado", db, "alta", **dict(NUEVO, id_cliente="C001", dni="45000001"))
+    # La unicidad abarca también los clientes adicionales de T07.
+    evidencia.append(rechazo("dni_duplicado", db, "alta", **dict(NUEVO, id_cliente="Q13-C02",
+                                                                 dni="50100001")))
+    rechazo("id_duplicado", db, "alta", **dict(NUEVO, id_cliente="DC001", dni="45000001"))
     for campo, valor in (("dni", "31.245.678"), ("email", "sin-arroba"), ("telefono", "11 4455"),
                          ("nombre", "  "), ("obra_social", "Medifé"), ("nro_afiliado", None)):
         evidencia.append(rechazo("datos_invalidos", db, "alta",
@@ -121,6 +131,9 @@ def verificar(client, db):
     evidencia.append(rechazo("inactivo", db, "baja", id_cliente="C003"))
     evidencia.append(rechazo("inactivo", db, "modificar", id_cliente="C003",
                              email="carla@example.com"))
+    # DC009 llega inactivo desde los adicionales: se rechaza igual que una baja de q13.
+    evidencia.append(rechazo("inactivo", db, "modificar", id_cliente="DC009",
+                             telefono="3515999999"))
     rechazo("inexistente", db, "baja", id_cliente="C999")
     rechazo("datos_invalidos", db, "borrar", id_cliente="C003")
     resultado = q13(db, "reactivar", id_cliente="C003")
@@ -143,17 +156,68 @@ def verificar(client, db):
     return evidencia
 
 
+CLIENTES_EN_GRAFO = """
+MATCH (c:Cliente) WHERE c.id_cliente IN $ids
+RETURN c.id_cliente AS id_cliente, c.activo AS activo, c.email AS email,
+       c.obra_social AS obra_social, c.nro_afiliado AS nro_afiliado,
+       COUNT { (:Venta)-[:REALIZADA_POR]->(c) } AS ventas,
+       COUNT { (:Receta)-[:PRESCRIPTA_A]->(c) } AS recetas
+ORDER BY id_cliente
+"""
+IDS_GRAFO = ["C001", "C002", "C003", "C005", "DC009", "Q13-C01"]
+
+
+def verificar_grafo(db, db_configurada):
+    """Sincroniza Neo4j desde la base temporal y compara los clientes con MongoDB.
+
+    Al terminar, con éxito o con error, vuelve a publicar la base configurada.
+    """
+    esperado = [
+        {**{c: cliente[c] for c in ("id_cliente", "activo", "email", "obra_social",
+                                     "nro_afiliado")},
+         "ventas": db.ventas.count_documents({"id_cliente": cliente["id_cliente"]}),
+         "recetas": db.recetas.count_documents({"id_cliente": cliente["id_cliente"]})}
+        for cliente in db.clientes.find({"id_cliente": {"$in": IDS_GRAFO}}).sort("id_cliente", 1)
+    ]
+    with conectar_neo4j() as driver:
+        with driver.session(database=os.environ.get("NEO4J_DATABASE", "neo4j")) as sesion:
+            try:
+                grafo = sincronizar_grafo(
+                    db, sesion, lambda tx: tx.run(CLIENTES_EN_GRAFO, ids=IDS_GRAFO).data())
+                # Repetir el refresco no cambia el resultado.
+                assert sincronizar_grafo(
+                    db, sesion, lambda tx: tx.run(CLIENTES_EN_GRAFO, ids=IDS_GRAFO).data()) == grafo
+            finally:
+                try:
+                    sincronizar_grafo(db_configurada, sesion)
+                except ErrorSincronizacion as exc:
+                    print(f"AVISO: el grafo quedó con la base de prueba ({exc}). "
+                          "Ejecutá scripts/loaders/load_neo4j.py.", file=sys.stderr)
+    assert grafo == esperado, (grafo, esperado)
+    por_id = {c["id_cliente"]: c for c in grafo}
+    # La baja conserva el nodo y sus vínculos históricos; el alta aparece sin historial.
+    assert por_id["C003"]["activo"] is False and por_id["C003"]["ventas"] > 0
+    assert por_id["Q13-C01"]["activo"] is True and por_id["Q13-C01"]["ventas"] == 0
+    # El afiliado vaciado en MongoDB se quita del nodo.
+    assert por_id["C001"]["nro_afiliado"] is None
+    return grafo
+
+
 def main():
-    cliente, _ = conectar_mongo()
+    con_neo4j = "--neo4j" in sys.argv
+    cliente, db_configurada = conectar_mongo()
     nombre = f"farmared_test_q13_{uuid4().hex}"
     with cliente:
+        db = cliente[nombre]
         try:
-            evidencia = verificar(cliente, cliente[nombre])
+            evidencia = verificar(cliente, db)
+            grafo = verificar_grafo(db, db_configurada) if con_neo4j else None
         finally:
             cliente.drop_database(nombre)
     if "--evidencia" in sys.argv:
-        print(json.dumps(evidencia, ensure_ascii=False, indent=2))
-    print("q13: OK en MongoDB")
+        salida = {"operaciones": evidencia, "grafo": grafo} if con_neo4j else evidencia
+        print(json.dumps(salida, ensure_ascii=False, indent=2))
+    print("q13: OK en MongoDB" + (" y en Neo4j (sincronización T06)" if con_neo4j else ""))
 
 
 if __name__ == "__main__":

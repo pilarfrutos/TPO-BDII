@@ -8,7 +8,7 @@ la consigna y la tarea de [TAREAS.md](../TAREAS.md) que lo cubre.
 - **Equipo**: recomendación o interpretación propia; puede cambiarse si se
   acuerda y se documenta.
 
-Revisado el 12/11/2026.
+Revisado el 13/11/2026, con T05–T14 integradas en `main`.
 
 ## 1. Datos de la entrega
 
@@ -80,25 +80,29 @@ Filtros exactos de la consigna. No agregar exclusiones que el enunciado no pide.
 | q | Enunciado resumido | Filtros obligatorios | Motor previsto | Tarea |
 | --- | --- | --- | --- | --- |
 | 01 | Productos activos con todos los datos del proveedor | `activo = True` del producto; el proveedor puede estar inactivo | MongoDB | T08 ✅ |
-| 02 | Ventas 'Pendiente' con farmacéutico (nombre, matrícula, sucursal) y total | Solo estado 'Pendiente' | MongoDB | T10 |
-| 03 | Historial de un cliente: ventas y recetas por fecha | Parámetro `id_cliente`; orden cronológico; desempate definido | Neo4j | T09 |
-| 04 | Clientes con más de una receta y su cantidad | Cantidad > 1; recetas en cualquier estado | Neo4j | T09 |
-| 05 | Farmacéuticos activos y ventas de los últimos 60 días | Excluir solo 'Anulada'; incluir conteo 0 | MongoDB | T10 |
-| 06 | Tratamientos prolongados 'Vigente' con próxima dispensa anterior a hoy, con cliente | `proxima_dispensa < hoy` | Neo4j | T09 |
+| 02 | Ventas 'Pendiente' con farmacéutico (nombre, matrícula, sucursal) y total | Solo estado 'Pendiente' | MongoDB | T10 ✅ |
+| 03 | Historial de un cliente: ventas y recetas por fecha | Parámetro `id_cliente`; orden cronológico; desempate definido | Neo4j | T09 ✅ |
+| 04 | Clientes con más de una receta y su cantidad | Cantidad > 1; recetas en cualquier estado | Neo4j | T09 ✅ |
+| 05 | Farmacéuticos activos y ventas de los últimos 60 días | Excluir solo 'Anulada'; incluir conteo 0 | MongoDB | T10 ✅ |
+| 06 | Tratamientos prolongados 'Vigente' con próxima dispensa anterior a hoy, con cliente | `proxima_dispensa < hoy` | Neo4j | T09 ✅ |
 | 07 | Top 5 productos por unidades vendidas | Solo 'Completada'; empates definidos | MongoDB | T08 ✅ |
 | 08 | Lotes con menos de 50 unidades con producto, sucursal y proveedor | `unidades < 50`; no excluir vencidos | MongoDB | T08 ✅ |
-| 09 | Ventas 'Venta libre' con total < 5.000 | Excluir 'Anulada'; `total < 5000` estricto | MongoDB | T10 |
-| 10 | Clientes atendidos en una sucursal | Parámetro `id_sucursal`; vía farmacéutico activo o no; sin duplicados | Neo4j | T09 |
+| 09 | Ventas 'Venta libre' con total < 5.000 | Excluir 'Anulada'; `total < 5000` estricto | MongoDB | T10 ✅ |
+| 10 | Clientes atendidos en una sucursal | Parámetro `id_sucursal`; vía farmacéutico activo o no; sin duplicados | Neo4j | T09 ✅ |
 | 11 | Ingresos por farmacéutico en el mes actual | Solo 'Completada'; mes calendario actual | MongoDB | T08 ✅ |
-| 12 | Clientes sin ventas en el último año | Incluir quienes nunca compraron; no excluir inactivos por suposición | Neo4j | T09 |
+| 12 | Clientes sin ventas en el último año | Incluir quienes nunca compraron; no excluir inactivos por suposición | Neo4j | T09 ✅ |
 | 13 | ABM de clientes | Alta con DNI único; modificación de contacto y cobertura; baja lógica | MongoDB (+ refresco del grafo) | T11 ✅ |
 | 14 | Registro de venta 'Completada' validada | Ver N1–N5 y N8; total calculado; receta actualizada | MongoDB (transacción) | T13 y T14 ✅ |
 | 15 | Descuento de stock FEFO de una venta | Lotes de la sucursal del farmacéutico; omitir vencidos; todo o nada | MongoDB (transacción) | T12 y T14 ✅ |
 
-Las consultas q01, q07, q08 y q11 tienen
-[ejemplos y pruebas de borde reproducibles](evidencias/t08.md) con los CSV
-originales y casos preparados en una base temporal. Queda verificarlas con los
-datos adicionales de T07 cuando estén disponibles.
+Las quince funciones están en `src/services/` y tienen evidencia en
+[docs/evidencias/](evidencias/). q01, q07, q08 y q11 tienen
+[ejemplos y pruebas de borde](evidencias/t08.md) con los CSV originales y
+casos preparados en una base temporal. q02, q05 y q09 ([T10](evidencias/t10.md))
+y q03, q04, q06, q10 y q12 ([T09](modelo-y-contratos.md)) se verificaron con los
+adicionales de [T07](evidencias/t07.md). Quedan pendientes la ejecución por
+terminal de q13–q15 (T16), las pruebas de concurrencia y fallos (T15), el
+informe (T17) y el ensayo final (T18).
 
 ## 6. Criterios de evaluación
 
@@ -149,9 +153,15 @@ del sistema, así que los resultados de los originales cambian con el tiempo.
 
 Con la fecha del sistema, los originales casi no producen resultados en las
 consultas relativas: en noviembre de 2026 no hay ventas del mes actual (q11),
-y el resultado de q05 depende del día en que se ejecute. Los adicionales deben incluir fechas relativas al
-período de evaluación. Conviene que T07 genere esas fechas en el momento de la
-carga, o documentar con qué fecha se ensayó.
+y el resultado de q05 depende del día en que se ejecute.
+
+**Resuelto en T07.** Los adicionales usan fechas fijas alrededor del
+**13/11/2026** (ver [T07](evidencias/t07.md)). Las funciones que admiten un día
+inyectado se prueban con esa fecha, y las evidencias la indican. Si el ensayo
+final (T18) o la corrección se hacen otro día, q05, q06, q11 y q12 por terminal
+van a dar otros resultados que la evidencia. q14 también puede encontrar
+vencidos lotes que el 13/11 eran utilizables. T07 prevé revisar la fecha base
+antes del ensayo final.
 
 ## 8. Dudas e interpretaciones pendientes
 
@@ -164,9 +174,9 @@ respuesta, se aplica la interpretación propuesta y se documenta en el informe.
 | D2 | ¿Cómo se cuentan los "10 registros por colección/tabla" con ítems embebidos o relaciones del grafo? | Al menos 10 filas propias por cada uno de los nueve datasets, detalle incluido | Cátedra | T07 |
 | D3 | Vigencia de una receta sin fecha de vencimiento propia | Vigente = `estado == 'Vigente'`, sin calcular vencimiento por antigüedad | Cátedra | q14 |
 | D4 | ¿`proxima_dispensa` futura impide dispensar antes de esa fecha? | No bloquea (la consigna la llama "fecha estimada"); se documenta | Cátedra | q14 |
-| D5 | ¿Un lote que vence hoy puede dispensarse? | Utilizable hasta su fecha de vencimiento inclusive | Equipo | q15 |
+| D5 | ¿Un lote que vence hoy puede dispensarse? | Utilizable hasta su fecha de vencimiento inclusive. **Implementado** en q15 (T12): filtra `vencimiento >= fecha de la venta` | Equipo | q15 |
 | D6 | Varios productos bajo receta en una venta | Una sola receta cubre la venta y cuenta una dispensa (respaldado por RC003) | Equipo | q14 |
-| D7 | ¿Cómo espera la cátedra que se ejecute q15: dentro de q14 o también aislada? | Se ejecuta en la transacción de q14; por terminal solo con protección contra doble descuento | Cátedra | T12, T14, T16 |
+| D7 | ¿Cómo espera la cátedra que se ejecute q15: dentro de q14 o también aislada? | Se ejecuta en la transacción de q14. **Implementado** (T14): q15 exige una transacción activa y, si la venta ya tiene `registro.descuento`, devuelve ese reparto sin descontar otra vez. Falta definir su ejecución por terminal (T16) y confirmarlo con la cátedra | Cátedra | T12, T14, T16 |
 | D8 | ¿La sucursal debe estar activa además de ser tipo 'Farmacia'? | Validar también `activo` de la sucursal, aunque la consigna solo exige el tipo | Equipo | q14 |
 | D9 | ¿El cliente dado de baja (`activo = False`) aparece en q12? | Sí; la consigna no lo excluye (C008 nunca compró y está inactivo) | Equipo | q12 |
 | D10 | ¿Mezclar productos de venta libre y bajo receta en una venta? | Permitido; tipo 'Con receta' si se informa receta, 'Venta libre' si no | Equipo | q14 |

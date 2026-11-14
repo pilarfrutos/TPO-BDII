@@ -44,9 +44,9 @@ python3.12 scripts/loaders/load_neo4j.py
 ```
 
 El chequeo debe confirmar la autenticación en ambos motores y que MongoDB tiene
-un PRIMARY. `load_mongo.py` carga los 103 registros de los CSV originales y,
-si existen, los de `data/adicionales/`. Después, `load_neo4j.py` proyecta los
-documentos que están en MongoDB, incluidos los cambios de negocio.
+un PRIMARY. `load_mongo.py` carga los 103 registros de los CSV originales y
+los 90 de `data/adicionales/`: 193 en total. Después, `load_neo4j.py` proyecta
+los documentos que están en MongoDB, incluidos los cambios de negocio.
 
 El cargador de MongoDB es aditivo: inserta lo que falta y nunca pisa
 documentos existentes, así que repetirlo no revierte ventas, dispensas ni
@@ -85,7 +85,10 @@ Los scripts usan una base temporal de MongoDB y la eliminan al terminar.
 Con `--evidencia`, `tests/queries/verify.py` imprime ejemplos verificados de
 [q01, q07, q08 y q11](docs/evidencias/t08.md). Los scripts de q13, q14 y q15
 imprimen el antes y el después de las operaciones (ver
-[docs/evidencias/](docs/evidencias/)).
+[docs/evidencias/](docs/evidencias/)). Con `--neo4j`, `verify_q13.py` también
+sincroniza el grafo desde la base temporal y comprueba los clientes en Neo4j.
+Al terminar vuelve a publicar la base configurada en `.env`, porque Neo4j
+Community tiene una sola base.
 
 ## Ejecutar una consulta
 
