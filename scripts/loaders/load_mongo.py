@@ -1,9 +1,8 @@
 """Carga en MongoDB los CSV originales y los adicionales de data/adicionales.
 
 Modos:
-  (por defecto)        Carga aditiva: inserta los registros que faltan y conserva
-                       los existentes, aunque hayan cambiado por operaciones de
-                       negocio (ABM, ventas, dispensas, descuentos de stock).
+  (por defecto)        Inserta registros faltantes y completa la sucursal de las
+                       ventas CSV que todavía no la tienen.
   --verificar          Compara la base con los CSV sin escribir nada.
   --reiniciar NOMBRE   Borra las nueve colecciones de la base NOMBRE y la vuelve
                        a cargar. Es destructivo: NOMBRE debe coincidir con la base
@@ -88,8 +87,15 @@ def instalar_validadores(db):
                    validationAction="error")
 
 
+def _ventas_con_sucursal(datos):
+    """Usa la asignación de los CSV como referencia para las ventas importadas."""
+    sucursales = {f["id_farmaceutico"]: f["id_sucursal"] for f in datos["farmaceuticos"]}
+    return [dict(venta, id_sucursal=sucursales[venta["id_farmaceutico"]])
+            for venta in datos["ventas"]]
+
+
 def cargar(db, datos):
-    """Inserta los registros ausentes por ID de origen; no modifica los existentes.
+    """Inserta faltantes y completa la sucursal de ventas CSV de cargas previas.
 
     Devuelve {colección: (nuevos, ya_existentes)}.
     """
@@ -100,12 +106,20 @@ def cargar(db, datos):
     conteos = {}
     for nombre, filas in datos.items():
         clave = ENTIDADES[nombre][1]
+        if nombre == "ventas":
+            filas = _ventas_con_sucursal(datos)
         operaciones = [UpdateOne({clave: f[clave]}, {"$setOnInsert": para_mongo(f)}, upsert=True)
                        for f in filas]
         nuevos = existentes = 0
         if operaciones:
             resultado = db[nombre].bulk_write(operaciones)
             nuevos, existentes = resultado.upserted_count, resultado.matched_count
+            if nombre == "ventas":
+                db.ventas.bulk_write([
+                    UpdateOne({"id_venta": f["id_venta"], "id_sucursal": None},
+                              {"$set": {"id_sucursal": f["id_sucursal"]}})
+                    for f in filas
+                ])
         conteos[nombre] = (nuevos, existentes)
         print(f"{nombre}: {nuevos} nuevos; {existentes} ya existentes")
     return conteos
@@ -141,7 +155,8 @@ def verificar(client, db, datos):
         en_base = {d.get(clave): d for d in documentos}
         if len(en_base) != len(documentos):
             problemas.append(f"{nombre}: hay documentos con {clave} repetido o ausente")
-        esperados = {f[clave]: para_mongo(f) for f in datos[nombre]}
+        filas_csv = _ventas_con_sucursal(datos) if nombre == "ventas" else datos[nombre]
+        esperados = {f[clave]: para_mongo(f) for f in filas_csv}
         modificados = {}
         for identificador in sorted(esperados.keys() & en_base.keys()):
             esperado, actual = esperados[identificador], en_base[identificador]
@@ -211,7 +226,7 @@ def main():
                 print(f"Colecciones de {db.name} eliminadas; se cargan desde cero.")
             if not args.verificar:
                 cargar(db, datos)
-                print(f"Carga finalizada en {db.name}. No se reemplazaron registros existentes.")
+                print(f"Carga finalizada en {db.name}. Se completaron las sucursales faltantes de ventas CSV.")
         except RuntimeError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1

@@ -18,7 +18,7 @@ set permite confirmar o revertir conjuntamente las escrituras de una venta.
 | `productos` | `id_producto` | `id_proveedor`. | |
 | `stock_lotes` | `id_lote` | `id_producto`, `id_sucursal`. El número de lote puede repetirse en distintas sucursales. | |
 | `recetas` | `id_receta` | `id_cliente`, estado y dispensas. | `proxima_dispensa` |
-| `ventas` | `id_venta` | `id_cliente`, `id_farmaceutico`, fecha, tipo, medio de pago, total y estado. | `id_receta`, `id_sucursal` en ventas de q14 |
+| `ventas` | `id_venta` | `id_cliente`, `id_farmaceutico`, fecha, tipo, medio de pago, total, estado e `id_sucursal` de la operación o inferida al cargar. | `id_receta`, `id_sucursal` para legados sin completar |
 | `detalle_ventas` | `id_detalle` | `id_venta`, `id_producto`, cantidad y precio unitario de la operación. | |
 
 Se mantienen las colecciones e IDs que ya creó el loader. El detalle queda
@@ -60,8 +60,9 @@ matrículas, referencias y totales se validan sobre el conjunto unido antes de
 conectar, y un error indica el archivo y la línea.
 
 - **Carga aditiva (por defecto).** Un upsert con `$setOnInsert` por ID de
-  origen inserta lo que falta y no toca lo existente. Repetirla no revierte
-  altas, bajas, dispensas ni descuentos hechos por q13–q15 (D12).
+  origen inserta lo que falta. Si una venta del CSV ya existe sin sucursal,
+  la carga completa el campo según la asignación del farmacéutico en los CSV.
+  Repetir la carga conserva sucursales registradas y cambios de q13–q15 (D12).
 - **Stock.** `stock_lotes.csv` ya refleja las ventas históricas y se inserta
   tal cual: la carga nunca descuenta stock a partir de las ventas.
 - **Verificación.** Después de cada carga, y con `--verificar` sin escribir,
@@ -123,7 +124,7 @@ ventas en el período.
 [`preparar_proyeccion`](../src/utils/proyeccion_neo4j.py) recibe un conjunto
 completo de registros agrupados por las nueve colecciones de la tabla. Para
 cada colección proyecta los campos definidos en `ENTIDADES`. La proyección de
-`Venta` agrega el `id_sucursal` opcional de q14 y valida su referencia a una
+`Venta` incorpora el `id_sucursal` guardado en MongoDB y valida su referencia a una
 sucursal existente. Los campos internos de MongoDB, como `_id`, quedan fuera.
 Conserva IDs, DNI y matrículas como
 texto, cantidades e importes como enteros y `activo` como booleano.
@@ -197,11 +198,13 @@ el cargador y verificá el error con código `1`. Volvé a levantar Neo4j con
 del cliente aparece en el grafo. La llamada con `consulta` debe propagar el
 error mientras Neo4j está caído.
 
-Para q10, las ventas de q14 usan `Venta.id_sucursal`, la sucursal guardada al
-momento de la operación. Para las ventas importadas sin ese campo, q10 infiere
-la sucursal de la asignación disponible del farmacéutico. Las ventas nuevas
-conservan su sucursal aunque el farmacéutico se reasigne. El recorrido y los
-casos de prueba están en la [evidencia de q10](evidencias/q10.md).
+q10 y q02 consultan la sucursal guardada en la venta. q14 registra la sede
+de la operación. Para ventas históricas, el cargador fija una sede inferida a
+partir de la asignación de los CSV, que es la información disponible sobre
+esos registros. Una reasignación posterior conserva ambas atribuciones.
+Las consultas recurren a la asignación actual solo para documentos que
+todavía carecen de sede. Repetir la carga normal completa las ventas CSV
+de instalaciones previas. Los casos están en la [evidencia de q10](evidencias/q10.md).
 
 Para q12, el último año calendario abarca desde el aniversario del año
 anterior hasta hoy, ambos inclusive, según la fecha de Buenos Aires. Si hoy

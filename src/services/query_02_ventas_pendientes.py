@@ -2,7 +2,10 @@
 
 
 def q02(db):
-    """Devuelve ventas pendientes desde MongoDB, ordenadas por fecha e ID."""
+    """Devuelve ventas pendientes con la sucursal de la venta, por fecha e ID.
+
+    Para documentos sin sucursal usa la asignación actual del farmacéutico.
+    """
     return list(db.ventas.aggregate([
         {"$match": {"estado": "Pendiente"}},
         {"$sort": {"fecha": 1, "id_venta": 1}},
@@ -14,9 +17,10 @@ def q02(db):
             "pipeline": [{"$project": {"_id": 0}}],
         }},
         {"$unwind": "$farmaceutico"},
+        {"$set": {"sucursal_venta": {"$ifNull": ["$id_sucursal", "$farmaceutico.id_sucursal"]}}},
         {"$lookup": {
             "from": "sucursales",
-            "localField": "farmaceutico.id_sucursal",
+            "localField": "sucursal_venta",
             "foreignField": "id_sucursal",
             "as": "sucursal",
             "pipeline": [{"$project": {"_id": 0}}],

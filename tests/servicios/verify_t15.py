@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from scripts.check_connections import conectar_mongo, conectar_neo4j
 from scripts.loaders.load_mongo import cargar
+from src.services.query_02_ventas_pendientes import q02
+from src.services.query_10_clientes_por_sucursal import q10
 from src.services.sincronizacion_neo4j import ErrorSincronizacion, sincronizar_grafo
 from src.utils.datos_csv import leer_datos
 from verify_q14 import verificar as verificar_q14
@@ -41,6 +43,8 @@ def verificar_indisponibilidad_grafo(client, db_principal, sesion_real):
     restaurado = False
 
     try:
+        ejecutar_en_base_temporal(client, "t15_sucursal",
+                                  lambda db: verificar_sucursal_historica(db, sesion_real))
         cargar(db_temporal, datos)
         sincronizar_grafo(db_temporal, sesion_real)
         telefono_anterior = telefono_cliente(sesion_real, id_cliente)
@@ -98,6 +102,31 @@ def ejecutar_en_base_temporal(client, prefijo, verificador):
         return verificador(client[nombre])
     finally:
         client.drop_database(nombre)
+
+
+def verificar_sucursal_historica(db, sesion):
+    datos = leer_datos()
+    cargar(db, datos)
+    assert "DC007" in {fila["id_cliente"] for fila in q10(db, sesion, "DS006")}
+
+    db.farmaceuticos.update_many({"id_farmaceutico": {"$in": ["DF009", "DF005"]}},
+                                 {"$set": {"id_sucursal": "DS007"}})
+    assert "DC007" in {fila["id_cliente"] for fila in q10(db, sesion, "DS006")}
+    assert "DC007" not in {fila["id_cliente"] for fila in q10(db, sesion, "DS007")}
+
+    # Una carga previa puede carecer de la sucursal, incluso tras una reasignación.
+    db.ventas.update_one({"id_venta": "DV007"}, {"$unset": {"id_sucursal": ""}})
+    assert cargar(db, datos)["ventas"] == (0, len(datos["ventas"]))
+    assert db.ventas.find_one({"id_venta": "DV007"})["id_sucursal"] == "DS006"
+    assert "DC007" in {fila["id_cliente"] for fila in q10(db, sesion, "DS006")}
+    assert "DC007" not in {fila["id_cliente"] for fila in q10(db, sesion, "DS007")}
+    pendiente = next(fila for fila in q02(db) if fila["id_venta"] == "DV005")
+    assert pendiente["sucursal"]["id_sucursal"] == "DS003"
+
+    # Si ya se conoce una sucursal específica de la venta, se conserva.
+    db.ventas.update_one({"id_venta": "DV007"}, {"$set": {"id_sucursal": "DS002"}})
+    cargar(db, datos)
+    assert db.ventas.find_one({"id_venta": "DV007"})["id_sucursal"] == "DS002"
 
 
 def main():

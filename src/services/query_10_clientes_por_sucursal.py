@@ -24,6 +24,8 @@ def q10(db_mongo, sesion_neo4j, id_sucursal):
     Recibe la base fuente de MongoDB, una sesión de Neo4j y el ID de sucursal.
     Devuelve una fila por cliente con ID, nombre y apellido, por ID ascendente.
     Una sucursal sin atenciones o inexistente devuelve una lista vacía.
+    Usa la sucursal persistida al vender o al cargar los CSV. Para documentos
+    sin sucursal, usa la asignación actual del farmacéutico como respaldo.
     """
     if not isinstance(id_sucursal, str) or not id_sucursal.strip():
         raise ValueError("Indicá un ID de sucursal no vacío.")

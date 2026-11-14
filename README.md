@@ -48,9 +48,10 @@ un PRIMARY. `load_mongo.py` carga los 103 registros de los CSV originales y
 los 90 de `data/adicionales/`: 193 en total. Después, `load_neo4j.py` proyecta
 los documentos que están en MongoDB, incluidos los cambios de negocio.
 
-El cargador de MongoDB es aditivo: inserta lo que falta y nunca pisa
-documentos existentes, así que repetirlo no revierte ventas, dispensas ni
-descuentos de stock. Al terminar compara la base con los CSV. Para verificar
+El cargador de MongoDB inserta lo que falta y completa `id_sucursal` en
+ventas importadas que aún carecen del campo. Para inferirlo usa la asignación
+del farmacéutico en los CSV. Repetir la carga conserva las sucursales ya
+guardadas y los cambios de negocio. Al terminar compara la base con los CSV. Para verificar
 sin escribir o para volver al estado de los CSV (borra las nueve colecciones):
 
 ```sh
