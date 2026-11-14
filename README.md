@@ -83,15 +83,15 @@ python3.12 tests/servicios/verify_q15.py
 ```
 
 Los scripts usan una base temporal de MongoDB y la eliminan al terminar.
-Con `--evidencia`, `tests/queries/verify.py` imprime ejemplos verificados de
-[q01, q07, q08 y q11](docs/evidencias/t08.md). Los scripts de q13, q14 y q15
-imprimen el antes y el después de las operaciones (ver
-[docs/evidencias/](docs/evidencias/)).
+Agregá `--evidencia` a [`verify.py`](tests/queries/verify.py) para ver ejemplos
+de q01, q07, q08 y q11, y a [`verify_t10.py`](tests/queries/verify_t10.py) para
+q02, q05 y q09. Los verificadores de q13, q14 y q15 aceptan el mismo argumento
+para mostrar en JSON el estado antes y después de las operaciones y los rechazos.
 
-La prueba de [T15](docs/evidencias/t15.md) y `verify_q13.py --neo4j` publican
-la proyección en `neo4j-test`, una instancia aparte con almacenamiento
-temporal. Con MongoDB en marcha, levantá esa instancia y ejecutá las pruebas
-de grafo en serie. Ambas comparten la instancia de prueba.
+[`verify_t15.py`](tests/servicios/verify_t15.py) verifica concurrencia, rollbacks
+y recuperación de la proyección. Ese script y `verify_q13.py --neo4j` publican
+en `neo4j-test`, una instancia aparte con almacenamiento temporal. Con MongoDB
+en marcha, levantá esa instancia y ejecutá las dos pruebas de grafo en serie.
 
 ```sh
 docker compose up -d --wait neo4j-test
@@ -128,15 +128,11 @@ python3.12 scripts/run_query.py q14 \
 python3.12 scripts/run_query.py q15 --id-venta CLI-V01
 ```
 
-q03, q04, q06, q10 y q12 refrescan la proyección desde MongoDB antes de consultar Neo4j.
-Los ejemplos verificados cubren el [historial de un cliente](docs/evidencias/q03.md),
-los [clientes con más de una receta](docs/evidencias/q04.md), las
-[dispensas atrasadas](docs/evidencias/q06.md), los
-[clientes atendidos por sucursal](docs/evidencias/q10.md) y los
-[clientes sin ventas en el último año](docs/evidencias/q12.md).
-Los ejemplos de q02, q05 y q09 están en las
-[evidencias de T10](docs/evidencias/t10.md).
-q06 y q12 usan la fecha actual de Buenos Aires.
+q03, q04, q06, q10 y q12 refrescan la proyección desde MongoDB antes de consultar
+Neo4j. Con los CSV cargados, q03 devuelve para `C001` los eventos `RC001`,
+`V003`, `V015`, `V013`, `RC008` y `V010`, en ese orden. q10 incluye a `C004`
+entre los clientes atendidos en `S002`, por una venta de un farmacéutico hoy
+inactivo. q05, q06, q11 y q12 usan la fecha actual de Buenos Aires.
 
 Cada consulta acepta su número (`3`) o código (`q03`) y muestra el resultado
 como JSON. Usá `python3.12 scripts/run_query.py q13 --help` para ver las
@@ -154,7 +150,8 @@ El comando con `CLI-V01` devuelve el reparto ya aplicado por q14. Las ventas
 importadas tienen stock consolidado y quedan fuera del descuento. Para ver un
 descuento autónomo real y el rollback integrado, ejecutá
 `python3.12 tests/servicios/verify_q15.py --evidencia`. La prueba prepara sus
-propias ventas en una base temporal. [Resultados de q15](docs/evidencias/q15.md)
+propias ventas en una base temporal.
+
 q13, q14 y q15 pueden modificar MongoDB, por lo que conviene usar
 identificadores propios como los de los ejemplos. Los cambios de q13 aparecen
 en Neo4j en el siguiente refresco de la proyección.
