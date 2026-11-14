@@ -2,27 +2,25 @@
 
 Uso: python tests/servicios/verify_q13.py [--evidencia] [--neo4j]
 Con --evidencia imprime en JSON el antes/después de cada operación y los rechazos.
-Con --neo4j además sincroniza Neo4j desde la base temporal con `sincronizar_grafo`
-(T06), comprueba el grafo y al terminar lo vuelve a sincronizar desde la base
-configurada en .env. Neo4j Community tiene una sola base: no lo uses mientras
-otra persona consulta el grafo.
+Con --neo4j sincroniza desde la base temporal hacia neo4j-test y comprueba
+el grafo con `sincronizar_grafo` (T06).
 """
 from concurrent.futures import ThreadPoolExecutor
 import json
-import os
 from pathlib import Path
 import sys
 from threading import Barrier
 from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from scripts.check_connections import conectar_mongo, conectar_neo4j
+from scripts.check_connections import conectar_mongo
 from scripts.loaders.load_mongo import cargar
 from src.services.query_13_abm_clientes import ErrorCliente, q13
-from src.services.sincronizacion_neo4j import ErrorSincronizacion, sincronizar_grafo
+from src.services.sincronizacion_neo4j import sincronizar_grafo
 from src.utils.datos_csv import leer_datos
 from src.utils.datos_mongo import leer_snapshot
 from src.utils.proyeccion_neo4j import preparar_proyeccion
+from neo4j_pruebas import sesion_grafo_pruebas
 
 NUEVO = dict(id_cliente="Q13-C01", nombre="Ana", apellido="Prueba", dni="45111222",
              email="ana.p@example.com", telefono="1144556677", ciudad="La Plata",
@@ -167,11 +165,8 @@ ORDER BY id_cliente
 IDS_GRAFO = ["C001", "C002", "C003", "C005", "DC009", "Q13-C01"]
 
 
-def verificar_grafo(db, db_configurada):
-    """Sincroniza Neo4j desde la base temporal y compara los clientes con MongoDB.
-
-    Al terminar, con éxito o con error, vuelve a publicar la base configurada.
-    """
+def verificar_grafo(db, sesion):
+    """Compara los clientes proyectados en el grafo de prueba con MongoDB."""
     esperado = [
         {**{c: cliente[c] for c in ("id_cliente", "activo", "email", "obra_social",
                                      "nro_afiliado")},
@@ -179,20 +174,11 @@ def verificar_grafo(db, db_configurada):
          "recetas": db.recetas.count_documents({"id_cliente": cliente["id_cliente"]})}
         for cliente in db.clientes.find({"id_cliente": {"$in": IDS_GRAFO}}).sort("id_cliente", 1)
     ]
-    with conectar_neo4j() as driver:
-        with driver.session(database=os.environ.get("NEO4J_DATABASE", "neo4j")) as sesion:
-            try:
-                grafo = sincronizar_grafo(
-                    db, sesion, lambda tx: tx.run(CLIENTES_EN_GRAFO, ids=IDS_GRAFO).data())
-                # Repetir el refresco no cambia el resultado.
-                assert sincronizar_grafo(
-                    db, sesion, lambda tx: tx.run(CLIENTES_EN_GRAFO, ids=IDS_GRAFO).data()) == grafo
-            finally:
-                try:
-                    sincronizar_grafo(db_configurada, sesion)
-                except ErrorSincronizacion as exc:
-                    print(f"AVISO: el grafo quedó con la base de prueba ({exc}). "
-                          "Ejecutá scripts/loaders/load_neo4j.py.", file=sys.stderr)
+    def consultar(tx):
+        return tx.run(CLIENTES_EN_GRAFO, ids=IDS_GRAFO).data()
+
+    grafo = sincronizar_grafo(db, sesion, consultar)
+    assert sincronizar_grafo(db, sesion, consultar) == grafo
     assert grafo == esperado, (grafo, esperado)
     por_id = {c["id_cliente"]: c for c in grafo}
     # La baja conserva el nodo y sus vínculos históricos; el alta aparece sin historial.
@@ -205,13 +191,16 @@ def verificar_grafo(db, db_configurada):
 
 def main():
     con_neo4j = "--neo4j" in sys.argv
-    cliente, db_configurada = conectar_mongo()
+    cliente, _ = conectar_mongo()
     nombre = f"farmared_test_q13_{uuid4().hex}"
     with cliente:
         db = cliente[nombre]
         try:
             evidencia = verificar(cliente, db)
-            grafo = verificar_grafo(db, db_configurada) if con_neo4j else None
+            grafo = None
+            if con_neo4j:
+                with sesion_grafo_pruebas() as sesion:
+                    grafo = verificar_grafo(db, sesion)
         finally:
             cliente.drop_database(nombre)
     if "--evidencia" in sys.argv:

@@ -80,19 +80,28 @@ python3.12 tests/queries/verify_t10.py
 python3.12 tests/servicios/verify_q13.py
 python3.12 tests/servicios/verify_q14.py
 python3.12 tests/servicios/verify_q15.py
-python3.12 tests/servicios/verify_t15.py
 ```
 
 Los scripts usan una base temporal de MongoDB y la eliminan al terminar.
 Con `--evidencia`, `tests/queries/verify.py` imprime ejemplos verificados de
 [q01, q07, q08 y q11](docs/evidencias/t08.md). Los scripts de q13, q14 y q15
 imprimen el antes y el después de las operaciones (ver
-[docs/evidencias/](docs/evidencias/)). Con `--neo4j`, `verify_q13.py` también
-sincroniza el grafo desde la base temporal y comprueba los clientes en Neo4j.
-Al terminar vuelve a publicar la base configurada en `.env`, porque Neo4j
-Community tiene una sola base.
-La prueba de [T15](docs/evidencias/t15.md) reúne concurrencia, reintentos,
-rollback y recuperación de la proyección de Neo4j.
+[docs/evidencias/](docs/evidencias/)).
+
+La prueba de [T15](docs/evidencias/t15.md) y `verify_q13.py --neo4j` publican
+la proyección en `neo4j-test`, una instancia aparte con almacenamiento
+temporal. Con MongoDB en marcha, levantá esa instancia y ejecutá las pruebas
+de grafo en serie. Ambas comparten la instancia de prueba.
+
+```sh
+docker compose up -d --wait neo4j-test
+python3.12 tests/servicios/verify_q13.py --neo4j
+python3.12 tests/servicios/verify_t15.py
+docker compose stop neo4j-test
+```
+
+Desde el host, las pruebas usan `bolt://127.0.0.1:17687`. El devcontainer
+configura `NEO4J_TEST_URI` para usar el servicio dentro de la red de Compose.
 
 ## Ejecutar una consulta
 

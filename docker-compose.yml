@@ -64,6 +64,31 @@ services:
       retries: 30
       start_period: 30s
 
+  neo4j-test:
+    image: neo4j:5.26.0-community
+    profiles: ["test"]
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?Definir NEO4J_PASSWORD en .env}
+      FARMARED_NEO4J_PASSWORD: ${NEO4J_PASSWORD:?Definir NEO4J_PASSWORD en .env}
+      NEO4J_initial_dbms_default__database: farmared-test
+      NEO4J_server_memory_heap_initial__size: 128m
+      NEO4J_server_memory_heap_max__size: 256m
+      NEO4J_server_memory_pagecache_size: 128m
+    ports:
+      - "127.0.0.1:17687:7687"
+    tmpfs:
+      - /data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          cypher-shell -a bolt://localhost:7687 -d farmared-test -u neo4j
+          -p "$$FARMARED_NEO4J_PASSWORD" 'RETURN 1 AS ready;' > /dev/null
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
 volumes:
   mongo-data:
   mongo-keyfile:
