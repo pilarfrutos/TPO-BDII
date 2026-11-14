@@ -17,6 +17,7 @@ from src.services.query_14_registro_venta import ErrorVenta, q14
 from src.services.query_15_descuento_stock import q15
 from src.utils.calendario import fecha_bson
 from src.utils.datos_csv import ORIGINALES_DIR, leer_datos
+from src.utils.reglas_negocio import MAX_ENTERO_BSON
 
 # Día del escenario original, para que los lotes de los CSV sigan siendo utilizables.
 HOY = date(2026, 11, 13)
@@ -60,6 +61,24 @@ def verificar(db):
     cargar(db, leer_datos([ORIGINALES_DIR]))
     evidencia = {"ventas": [], "rechazos": []}
     productos = {p["id_producto"]: p for p in db.productos.find()}
+
+    antes = foto(db)
+    try:
+        q14(db, "Q14-ANTES-EMISION", "C003", "F006", "Efectivo",
+            [{"id_producto": "PRD004", "cantidad": 1}], "RC002", hoy=date(2026, 7, 1))
+    except ErrorVenta as exc:
+        assert exc.codigo == "receta_no_emitida" and foto(db) == antes
+        evidencia["rechazos"].append({"codigo": exc.codigo, "mensaje": str(exc)})
+    else:
+        raise AssertionError("q14 aceptó una venta anterior a la emisión")
+
+    for id_venta, cantidades in (
+        ("Q14-SUBTOTAL-GRANDE", [MAX_ENTERO_BSON // 2800 + 1]),
+        ("Q14-SUMA-GRANDE", [MAX_ENTERO_BSON // 2800, 1]),
+    ):
+        evidencia["rechazos"].append(rechazo(
+            db, "importe_fuera_de_rango", id_venta, "C001", "F001", "Efectivo",
+            [{"id_producto": "PRD001", "cantidad": cantidad} for cantidad in cantidades]))
 
     # Venta libre: precio de lista vigente, total calculado, stock descontado.
     l001, l013 = unidades(db, "L001"), unidades(db, "L013")
@@ -164,7 +183,7 @@ def verificar(db):
     ] + [
         ("datos_invalidos", ("C001", "F001", "Efectivo", [{"id_producto": "PRD001",
                                                             "cantidad": c}]), {})
-        for c in (0, -1, "2", True, 1.5)
+        for c in (0, -1, "2", True, 1.5, MAX_ENTERO_BSON + 1)
     ]
     for n, (codigo, args, kwargs) in enumerate(casos):
         evidencia["rechazos"].append(rechazo(db, codigo, f"Q14-R{n:02d}", *args, **kwargs))

@@ -20,7 +20,7 @@ CLIENTE = dict(id_cliente="T05-C01", nombre="Prueba", apellido="Carga", dni="990
 VENTA = dict(id_venta="T05-V01", id_cliente="T05-C01", id_farmaceutico="F001", id_receta="",
              fecha="2026-11-01", tipo="Venta libre", medio_pago="Efectivo", total="3000",
              estado="Completada")
-DETALLE = dict(id_detalle="T05-D01", id_venta="T05-V01", id_producto="PRD003", cantidad="2",
+DETALLE = dict(id_detalle="T05-D01", id_venta="T05-V01", id_producto="PRD001", cantidad="2",
                precio_unit="1500")
 
 
@@ -76,6 +76,20 @@ class LecturaCsvTest(unittest.TestCase):
         escribir(self.adicionales, "ventas", [dict(VENTA, id_cliente="C999")])
         escribir(self.adicionales, "detalle_ventas", [DETALLE])
         with self.assertRaisesRegex(ValueError, r"ventas\[T05-V01\]\.id_cliente: referencia"):
+            self.leer()
+
+    def test_rechaza_venta_atribuida_a_una_drogueria(self):
+        escribir(self.adicionales, "clientes", [CLIENTE])
+        escribir(self.adicionales, "ventas", [dict(VENTA, id_farmaceutico="F007")])
+        escribir(self.adicionales, "detalle_ventas", [DETALLE])
+        with self.assertRaisesRegex(ValueError, r"ventas\[T05-V01\]\.id_sucursal: S005 no es una Farmacia"):
+            self.leer()
+
+    def test_rechaza_item_bajo_receta_sin_receta_asociada(self):
+        escribir(self.adicionales, "clientes", [CLIENTE])
+        escribir(self.adicionales, "ventas", [VENTA])
+        escribir(self.adicionales, "detalle_ventas", [dict(DETALLE, id_producto="PRD003")])
+        with self.assertRaisesRegex(ValueError, r"ventas\[T05-V01\]\.id_receta: falta receta para PRD003"):
             self.leer()
 
     def test_rechaza_total_inconsistente_o_venta_sin_detalle(self):

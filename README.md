@@ -143,20 +143,28 @@ como JSON. Usá `python3.12 scripts/run_query.py q13 --help` para ver las
 operaciones `alta`, `modificar`, `baja` y `reactivar`; cada operación también
 tiene ayuda propia. En q14, repetí `--item PRODUCTO:CANTIDAD` para agregar
 productos y usá `--id-receta` cuando corresponda. q14 registra la venta y llama
-a q15 en la misma transacción. El comando q15 aplica FEFO a una venta completada
-que ya tiene sus ítems, fecha, sucursal histórica y `registro.stock_pendiente: true`.
-La marca indica que queda pendiente aplicar stock. Si hay un reparto guardado,
-q15 lo devuelve sin otro descuento. Las ventas importadas representan historia
-consolidada y quedan fuera de la operación. Para reproducir el caso autónomo,
-ejecutá `python3.12 tests/servicios/verify_q15.py --evidencia`. La prueba prepara
-una venta elegible en su base temporal y verifica el antes y el después.
+a q15 en la misma transacción. Si falta stock, se revierten la venta, el
+detalle, la dispensa y los cambios de lotes.
+
+En modo autónomo, q15 aplica FEFO sobre una venta ya completada con ítems,
+fecha, una sucursal histórica de tipo `Farmacia` y `registro.stock_pendiente: true`.
+El modo autónomo solo modifica lotes y guarda el reparto en la venta. Ante
+un rechazo, la venta existente conserva la marca y los saldos quedan intactos.
+El comando con `CLI-V01` devuelve el reparto ya aplicado por q14. Las ventas
+importadas tienen stock consolidado y quedan fuera del descuento. Para ver un
+descuento autónomo real y el rollback integrado, ejecutá
+`python3.12 tests/servicios/verify_q15.py --evidencia`. La prueba prepara sus
+propias ventas en una base temporal. [Resultados de q15](docs/evidencias/q15.md)
 q13, q14 y q15 pueden modificar MongoDB, por lo que conviene usar
 identificadores propios como los de los ejemplos. Los cambios de q13 aparecen
 en Neo4j en el siguiente refresco de la proyección.
 
-Los errores usan siempre el formato `ERROR qNN [codigo]: mensaje`, se escriben
-en stderr y devuelven código de salida `1`. La configuración se toma de `.env`
-y nunca se imprime una URI ni una contraseña.
+Los errores de uso, como un argumento obligatorio ausente o un ítem con
+formato inválido, muestran la ayuda de uso en stderr y devuelven código `2`.
+Los rechazos de ejecución gestionados, incluidos los datos fuera del rango
+BSON y las fallas de conexión, se escriben en stderr con formato
+`ERROR qNN [codigo]: mensaje` y devuelven código `1`. La salida JSON de una
+ejecución exitosa se escribe en stdout y devuelve código `0`.
 
 ## Detener las bases
 

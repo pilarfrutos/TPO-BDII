@@ -74,8 +74,9 @@ conectar, y un error indica el archivo y la línea.
   venta y que el total coincida con los ítems.
 - **Validadores de MongoDB.** La carga instala validadores de colección para
   dominios, enteros, mínimos y coherencia de dispensas. También los aplica a
-  colecciones existentes. Los documentos previos se conservan y se revisan
-  con `--verificar`. Las reglas entre colecciones se controlan en la aplicación.
+  colecciones existentes. Los índices únicos cubren IDs, DNI y matrículas.
+  Los validadores actúan sobre el documento que se escribe. Las referencias
+  y las reglas que cruzan colecciones se controlan en la aplicación.
 - **Reinicio explícito.** `--reiniciar NOMBRE_BASE` borra solo las nueve
   colecciones y vuelve a cargar. Exige el nombre de la base configurada, para
   no ejecutarlo contra otra por error.
@@ -85,6 +86,23 @@ conectar, y un error indica el archivo y la línea.
   repetidos, falla la creación del índice único y el loader lo informa. En
   ambos casos la salida es `--reiniciar`. Se comprobó en bases aisladas con
   [`verify_mongo.py`](../tests/carga/verify_mongo.py).
+
+**Alcance de los controles.** El lector valida encabezados, tipos, nulos,
+unicidad, referencias y reglas del conjunto antes de cargar. `--verificar` y
+el refresco de Neo4j aplican al snapshot los controles de tipos, referencias y
+coherencia de la proyección. En particular, la sede atribuida a cada venta debe
+ser una farmacia y un ítem bajo receta requiere una receta asociada al cliente.
+La sede registrada tiene prioridad. Para una venta sin sede se usa la asignación
+disponible del farmacéutico. La condición de venta del producto se toma del
+catálogo disponible, ya que los CSV carecen de una versión de ese dato por venta.
+
+Los servicios aplican las reglas de la operación en curso. q13 valida formato
+de DNI y combinación de cobertura y afiliado. q14 valida actividad, que la
+receta esté emitida y vigente y que cantidades e importes entren en un entero
+BSON de 64 bits. q15 revalida la sede histórica antes de aplicar un descuento
+pendiente. Para el historial se preservan `V001` con `F004` hoy inactivo,
+`V014` con `PRD012` hoy discontinuado, el precio original de cada ítem y la
+próxima dispensa de `RC002` tal como vino en el CSV.
 
 **Interfaz con el grafo (T06).**
 [`leer_snapshot(client, db)`](../src/utils/datos_mongo.py) devuelve las nueve
@@ -297,9 +315,11 @@ q15(db, id_venta, sesion=None)
   el resultado de la operación anterior; reutilizarla con otros argumentos
   da conflicto. La protección se persiste junto con la venta y el descuento.
   q15 puede ejecutarse por terminal para una venta completada con fecha, sede,
-  detalles y `registro.stock_pendiente: true`. Aplica FEFO con lotes vigentes
+  detalles y `registro.stock_pendiente: true`. La sede histórica debe ser de
+  tipo `Farmacia`. Aplica FEFO con lotes vigentes
   tanto en la fecha de venta como en la de aplicación. Guarda el reparto y
-  retira la marca en la misma transacción. Las ventas
+  retira la marca en la misma transacción. Un rechazo autónomo conserva la
+  venta ya registrada, la marca y los lotes. Las ventas
   históricas de los CSV carecen de esa marca porque su stock ya está consolidado.
 - La dispensa se cuenta una vez por venta con receta. En tratamientos
   prolongados, la próxima se fija a 30 días mientras queden dispensas; al

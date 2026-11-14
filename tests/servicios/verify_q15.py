@@ -105,6 +105,8 @@ def verificar_autonoma(db, hoy, ids_rechazo):
         verificar_rechazo_con_sesion(db, id_venta, hoy, "conflicto_stock")
     assert saldos(db, ids) == repuesto and estado_venta(db, id_venta) == pendiente
 
+    # La sede de la operación es la histórica, incluso tras una reasignación.
+    db.farmaceuticos.update_one({"id_farmaceutico": "F006"}, {"$set": {"id_sucursal": "S005"}})
     barrera = Barrier(2, timeout=10)
 
     def aplicar():
@@ -125,7 +127,32 @@ def verificar_autonoma(db, hoy, ids_rechazo):
     assert db.recetas.find_one({"id_receta": receta["id_receta"]}, {"_id": 0}) == receta
     return {"id_venta": id_venta, "rechazo": rechazo.exception.codigo,
             "rollback_sesion_prestada": ["stock_insuficiente", "conflicto_stock"],
-            "descuento": reparto, "saldos_tras_reintentos": despues}
+            "descuento": reparto, "saldos_antes_del_descuento": repuesto,
+            "saldos_tras_reintentos": despues}
+
+
+def verificar_rechazo_drogueria(db, hoy):
+    id_venta = "Q15-DROGUERIA"
+    db.ventas.insert_one({
+        "id_venta": id_venta, "id_cliente": "C001", "id_farmaceutico": "F007",
+        "id_sucursal": "S005", "fecha": fecha_bson(hoy), "id_receta": None,
+        "tipo": "Venta libre", "medio_pago": "Efectivo", "estado": "Completada",
+        "total": 2800, "registro": {"stock_pendiente": True},
+    })
+    db.detalle_ventas.insert_one({"id_detalle": f"{id_venta}-01", "id_venta": id_venta,
+                                 "id_producto": "PRD001", "cantidad": 1, "precio_unit": 2800})
+    db.stock_lotes.insert_one({
+        "id_lote": id_venta, "nro_lote": id_venta, "id_sucursal": "S005",
+        "id_producto": "PRD001", "unidades": 5, "vencimiento": fecha_bson(hoy),
+    })
+    antes = estado_venta(db, id_venta)
+    args = crear_parser().parse_args(["q15", "--id-venta", id_venta])
+    with TestCase().assertRaises(ErrorStock) as rechazo:
+        ejecutar_mongo(db, args)
+    assert rechazo.exception.codigo == "sucursal_no_farmacia"
+    assert estado_venta(db, id_venta) == antes
+    assert saldos(db, [id_venta]) == {id_venta: 5}
+    return {"codigo": rechazo.exception.codigo, "sucursal": "S005", "saldo_antes": 5, "saldo_despues": 5}
 
 
 def verificar(db):
@@ -224,11 +251,12 @@ def verificar(db):
         assert len(guardada["detalles"]) == int(prospero)
 
     autonoma = verificar_autonoma(db, hoy, ids_rechazo)
+    drogueria = verificar_rechazo_drogueria(db, hoy)
     return {"fecha": hoy.isoformat(),
             "exito": {"descuento": reparto, "antes": antes, "despues": despues},
             "rechazo": {**error, "antes": antes_rechazo, "despues": despues_rechazo},
             "concurrencia": {"resultados": resultados, "saldo_final": 3},
-            "autonoma": autonoma}
+            "autonoma": autonoma, "rechazo_drogueria": drogueria}
 
 
 def main():

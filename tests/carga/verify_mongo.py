@@ -121,6 +121,12 @@ def verificar_transicion(client, db):
 
 def verificar_reglas(client, db):
     datos = leer_datos()
+    datos["ventas"][0]["id_sucursal"] = "S005"
+    with TestCase().assertRaisesRegex(ValueError, "S005 no es una Farmacia"):
+        cargar(db, datos)
+    assert db.list_collection_names() == []
+    del datos["ventas"][0]["id_sucursal"]
+
     # Simula una colección preexistente a la incorporación de validadores.
     db.productos.insert_one(para_mongo(dict(datos["productos"][0], condicion_venta="Bajo recetaa")))
     cargar(db, datos)
@@ -143,9 +149,13 @@ def verificar_reglas(client, db):
     db.stock_lotes.update_one({"id_lote": "L001"}, {"$set": {"unidades": -1}},
                               bypass_document_validation=True)
     db.ventas.update_one({"id_venta": "V003"}, {"$set": {"total": 1, "id_receta": "RC005"}})
+    db.ventas.update_one({"id_venta": "V001"}, {"$set": {"id_sucursal": "S005"}})
+    db.detalle_ventas.update_one({"id_detalle": "D003"}, {"$set": {"id_producto": "PRD003"}})
     _, problemas = verificar(client, db, datos)
     for mensaje in ("PRD001].condicion_venta", "L001].unidades", "V003: total inconsistente",
-                    "V003].id_receta: RC005 pertenece a otro cliente"):
+                    "V003].id_receta: RC005 pertenece a otro cliente",
+                    "V001].id_sucursal: S005 no es una Farmacia",
+                    "V002].id_receta: falta receta para PRD003"):
         assert any(mensaje in p for p in problemas), problemas
 
 

@@ -88,9 +88,9 @@ def instalar_validadores(db):
 
 
 def _ventas_con_sucursal(datos):
-    """Usa la asignación de los CSV como referencia para las ventas importadas."""
+    """Completa la sede con la asignación de los CSV si la venta carece de ella."""
     sucursales = {f["id_farmaceutico"]: f["id_sucursal"] for f in datos["farmaceuticos"]}
-    return [dict(venta, id_sucursal=sucursales[venta["id_farmaceutico"]])
+    return [dict(venta, id_sucursal=venta.get("id_sucursal") or sucursales[venta["id_farmaceutico"]])
             for venta in datos["ventas"]]
 
 
@@ -101,6 +101,7 @@ def cargar(db, datos):
     """
     from pymongo import UpdateOne
 
+    preparar_proyeccion(datos)
     crear_indices(db)
     instalar_validadores(db)
     conteos = {}

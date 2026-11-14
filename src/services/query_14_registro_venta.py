@@ -7,7 +7,7 @@
    sucursal activa de tipo 'Farmacia'; productos existentes y activos;
    cantidades enteras positivas.
 2. Si algún producto es 'Bajo receta' o 'Bajo receta archivada', exige una
-   receta del mismo cliente en estado 'Vigente' con dispensas disponibles.
+   receta del mismo cliente, ya emitida y en estado 'Vigente' con dispensas disponibles.
 3. Inserta la cabecera y el detalle con el precio de lista vigente; el total es
    la suma de cantidad × precio.
 4. Registra una dispensa en la receta (una por venta, no por ítem). Simple y
@@ -26,12 +26,12 @@ Devuelve {"id_venta", "fecha", "total", "id_receta", "receta", "descuento",
 de stock los lanza q15 como ErrorStock (también con `codigo`, por ejemplo
 `stock_insuficiente`) y se propagan sin cambios.
 """
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from src.services.query_15_descuento_stock import q15
 from src.utils.calendario import fecha_bson, hoy_local
 from src.utils.reglas_negocio import (
-    BAJO_RECETA, MEDIOS_PAGO, TRATAMIENTO_PROLONGADO, validar_dispensas,
+    BAJO_RECETA, MAX_ENTERO_BSON, MEDIOS_PAGO, TRATAMIENTO_PROLONGADO, validar_dispensas,
     validar_producto_para_venta,
 )
 
@@ -71,13 +71,15 @@ def _normalizar(id_venta, id_cliente, id_farmaceutico, medio_pago, items, id_rec
         cantidad = item["cantidad"]
         if not isinstance(cantidad, int) or isinstance(cantidad, bool) or cantidad <= 0:
             raise ErrorVenta("datos_invalidos", f"items[{n}].cantidad: se esperaba un entero positivo")
+        if cantidad > MAX_ENTERO_BSON:
+            raise ErrorVenta("datos_invalidos", f"items[{n}].cantidad supera {MAX_ENTERO_BSON}")
         normalizados.append({"id_producto": _texto(f"items[{n}].id_producto", item["id_producto"]),
                              "cantidad": cantidad})
     solicitud["items"] = normalizados
     return solicitud
 
 
-def _validar_y_preparar(db, sesion, solicitud):
+def _validar_y_preparar(db, sesion, solicitud, hoy):
     """Lee las entidades dentro de la transacción y devuelve los productos por ID."""
     cliente = db.clientes.find_one({"id_cliente": solicitud["id_cliente"]}, session=sesion)
     if cliente is None:
@@ -132,6 +134,11 @@ def _validar_y_preparar(db, sesion, solicitud):
         if receta["estado"] != "Vigente":
             raise ErrorVenta("receta_no_vigente",
                              f"La receta {receta['id_receta']} está {receta['estado']}")
+        emision = receta.get("fecha_emision")
+        if not isinstance(emision, datetime):
+            raise ErrorVenta("receta_invalida", f"{receta['id_receta']}: fecha de emisión inválida")
+        if emision.date() > hoy:
+            raise ErrorVenta("receta_no_emitida", f"La receta {receta['id_receta']} aún no estaba emitida")
         try:
             validar_dispensas(receta)
         except ValueError as exc:
@@ -187,25 +194,33 @@ def q14(db, id_venta, id_cliente, id_farmaceutico, medio_pago, items, id_receta=
 
     solicitud = _normalizar(id_venta, id_cliente, id_farmaceutico, medio_pago, items, id_receta)
     hoy = hoy if hoy is not None else hoy_local()
+    if isinstance(hoy, datetime):
+        hoy = hoy.date()
+    if not isinstance(hoy, date):
+        raise ErrorVenta("datos_invalidos", "hoy: se esperaba una fecha")
     descontar_stock = descontar_stock or q15
 
     def registrar(sesion):
         previa = _repetida(db, sesion, solicitud)
         if previa is not None:
             return previa
-        farmaceutico, productos, receta = _validar_y_preparar(db, sesion, solicitud)
+        farmaceutico, productos, receta = _validar_y_preparar(db, sesion, solicitud, hoy)
         detalle = [
             {"id_detalle": f"{solicitud['id_venta']}-{n:02d}", "id_venta": solicitud["id_venta"],
              "id_producto": item["id_producto"], "cantidad": item["cantidad"],
              "precio_unit": productos[item["id_producto"]]["precio_unit"]}
             for n, item in enumerate(solicitud["items"], 1)
         ]
+        total = sum(d["cantidad"] * d["precio_unit"] for d in detalle)
+        # Los precios son no negativos, así que este límite también cubre cada subtotal.
+        if total > MAX_ENTERO_BSON:
+            raise ErrorVenta("importe_fuera_de_rango", f"El total de la venta supera {MAX_ENTERO_BSON}")
         venta = {
             "id_venta": solicitud["id_venta"], "id_cliente": solicitud["id_cliente"],
             "id_farmaceutico": solicitud["id_farmaceutico"], "id_receta": solicitud["id_receta"],
             "fecha": fecha_bson(hoy), "tipo": "Con receta" if receta else "Venta libre",
             "medio_pago": solicitud["medio_pago"],
-            "total": sum(d["cantidad"] * d["precio_unit"] for d in detalle),
+            "total": total,
             "estado": "Completada",
             # Sucursal de la operación, para no depender de la asignación futura (q10).
             "id_sucursal": farmaceutico["id_sucursal"],

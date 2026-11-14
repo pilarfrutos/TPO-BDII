@@ -16,7 +16,7 @@ def q15(db, id_venta, sesion=None):
     Recibe la base, el ID y, opcionalmente, la transacción activa de q14.
     Devuelve el reparto por producto y lote y lo reutiliza en los reintentos.
     Una venta por procesar debe tener `registro.stock_pendiente = True`, su
-    sucursal histórica, su fecha y sus detalles. Los lotes son utilizables
+    sucursal histórica de tipo Farmacia, su fecha y sus detalles. Los lotes son utilizables
     hasta el día de su vencimiento inclusive.
 
     En modo autónomo abre una transacción y verifica la vigencia al día de
@@ -59,6 +59,10 @@ def _descontar(sesion, db, id_venta, fecha_aplicacion):
     if not isinstance(sucursal, str) or not sucursal.strip() or not isinstance(fecha, datetime):
         raise ErrorStock("venta_invalida",
                          f"La venta {id_venta} debe tener sucursal y fecha")
+    sede = db.sucursales.find_one({"id_sucursal": sucursal}, {"tipo": 1}, session=sesion)
+    if sede is None or sede.get("tipo") != "Farmacia":
+        raise ErrorStock("sucursal_no_farmacia", f"La sucursal histórica {sucursal} de {id_venta} "
+                         "debe existir y ser de tipo Farmacia")
     # Un cliente PyMongo puede devolver la fecha BSON con o sin información UTC.
     if fecha_aplicacion is not None and fecha_aplicacion.date() > fecha.date():
         fecha = fecha_aplicacion

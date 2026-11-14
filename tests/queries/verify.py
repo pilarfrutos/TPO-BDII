@@ -52,8 +52,8 @@ def verificar(db):
     for dia in (date(2026, 10, 1), date(2026, 11, 1)):
         id_venta = f"TEST-{dia.isoformat()}"
         db.ventas.insert_one(para_mongo(dict(
-            id_venta=id_venta, id_cliente="C001", id_farmaceutico="F001", id_receta=None,
-            fecha=dia, tipo="Venta libre", medio_pago="Efectivo", total=precio, estado="Completada",
+            id_venta=id_venta, id_cliente="C001", id_farmaceutico="F001", id_receta="RC001",
+            fecha=dia, tipo="Con receta", medio_pago="Efectivo", total=precio, estado="Completada",
         )))
         db.detalle_ventas.insert_one(dict(
             id_detalle=id_venta, id_venta=id_venta, id_producto="PRD003", cantidad=1, precio_unit=precio,

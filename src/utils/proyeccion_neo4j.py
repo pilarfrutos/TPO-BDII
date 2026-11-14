@@ -67,11 +67,5 @@ def preparar_proyeccion(datos):
         proyeccion[nombre] = filas
 
     validar_referencias(proyeccion)
-    sucursales = {fila["id_sucursal"] for fila in proyeccion["sucursales"]}
-    for venta in proyeccion["ventas"]:
-        id_sucursal = venta["id_sucursal"]
-        if id_sucursal is not None and id_sucursal not in sucursales:
-            raise ValueError(f"ventas[{venta['id_venta']}].id_sucursal: referencia inexistente "
-                             f"en sucursales ({id_sucursal!r})")
     validar_negocio(proyeccion, ENTIDADES, ENTEROS)
     return proyeccion

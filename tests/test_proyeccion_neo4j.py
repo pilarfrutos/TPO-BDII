@@ -50,6 +50,17 @@ class ContratoProyeccionTest(unittest.TestCase):
         self.assertEqual(proyectada["id_sucursal"], "S001")
         self.assertNotIn("registro", proyectada)
 
+    def test_rechaza_drogueria_como_sucursal_guardada_de_venta(self):
+        self.datos["ventas"][0]["id_sucursal"] = "S005"
+        with self.assertRaisesRegex(ValueError, r"ventas\[V001\]\.id_sucursal: S005 no es una Farmacia"):
+            preparar_proyeccion(self.datos)
+
+    def test_rechaza_producto_bajo_receta_en_venta_sin_receta(self):
+        detalle = next(f for f in self.datos["detalle_ventas"] if f["id_detalle"] == "D003")
+        detalle["id_producto"] = "PRD003"
+        with self.assertRaisesRegex(ValueError, r"ventas\[V002\]\.id_receta: falta receta para PRD003"):
+            preparar_proyeccion(self.datos)
+
     def test_valida_referencias_obligatorias_y_opcionales_informadas(self):
         venta = self.datos["ventas"][0]
         for campo, invalido in (("id_cliente", "C999"), ("id_receta", "RC999"),
