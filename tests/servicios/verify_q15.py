@@ -5,7 +5,11 @@ from pathlib import Path
 import sys
 from threading import Barrier
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
+
+from pymongo.errors import InvalidOperation
+from pymongo.results import UpdateResult
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.check_connections import conectar_mongo
@@ -30,6 +34,19 @@ def estado_venta(db, id_venta):
     filtro = {"id_venta": id_venta}
     return {"venta": db.ventas.find_one(filtro, {"_id": 0}),
             "detalles": list(db.detalle_ventas.find(filtro, {"_id": 0}).sort("id_detalle", 1))}
+
+
+def verificar_rechazo_con_sesion(db, id_venta, hoy, codigo):
+    with db.client.start_session() as sesion:
+        with sesion.start_transaction():
+            db.ventas.update_one(
+                {"id_venta": id_venta}, {"$set": {"fecha": fecha_bson(hoy)}}, session=sesion)
+            with TestCase().assertRaises(ErrorStock) as rechazo:
+                q15(db, id_venta, sesion)
+            assert rechazo.exception.codigo == codigo
+            assert not sesion.in_transaction
+            with TestCase().assertRaises(InvalidOperation):
+                sesion.commit_transaction()
 
 
 def verificar_autonoma(db, hoy, ids_rechazo):
@@ -67,7 +84,27 @@ def verificar_autonoma(db, hoy, ids_rechazo):
     assert rechazo.exception.codigo == "stock_insuficiente"
     assert saldos(db, ids) == antes and estado_venta(db, id_venta) == pendiente
 
+    verificar_rechazo_con_sesion(db, id_venta, hoy, "stock_insuficiente")
+    assert saldos(db, ids) == antes and estado_venta(db, id_venta) == pendiente
+
     db.stock_lotes.update_one({"id_lote": "FEFO-SEGUNDO"}, {"$inc": {"unidades": 1}})
+    repuesto = saldos(db, ids)
+    segundo = db.stock_lotes.find_one({"id_lote": "FEFO-SEGUNDO"})["_id"]
+    coleccion = type(db.stock_lotes)
+    actualizar = coleccion.update_one
+
+    def conflicto_en_segundo_lote(self, filtro, cambios, **opciones):
+        if self.name == "stock_lotes" and filtro.get("_id") == segundo:
+            primero = self.find_one({"id_lote": "FEFO-PRIMERO"}, session=opciones["session"])
+            assert primero["unidades"] == repuesto["FEFO-PRIMERO"] - 1
+            return UpdateResult({"n": 0}, acknowledged=True)
+        return actualizar(self, filtro, cambios, **opciones)
+
+    # El primer decremento es real. Solo se simula el resultado del segundo.
+    with patch.object(coleccion, "update_one", conflicto_en_segundo_lote):
+        verificar_rechazo_con_sesion(db, id_venta, hoy, "conflicto_stock")
+    assert saldos(db, ids) == repuesto and estado_venta(db, id_venta) == pendiente
+
     barrera = Barrier(2, timeout=10)
 
     def aplicar():
@@ -87,6 +124,7 @@ def verificar_autonoma(db, hoy, ids_rechazo):
     }
     assert db.recetas.find_one({"id_receta": receta["id_receta"]}, {"_id": 0}) == receta
     return {"id_venta": id_venta, "rechazo": rechazo.exception.codigo,
+            "rollback_sesion_prestada": ["stock_insuficiente", "conflicto_stock"],
             "descuento": reparto, "saldos_tras_reintentos": despues}
 
 

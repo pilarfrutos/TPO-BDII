@@ -20,11 +20,10 @@ def q15(db, id_venta, sesion=None):
     hasta el día de su vencimiento inclusive.
 
     En modo autónomo abre una transacción y verifica la vigencia al día de
-    aplicación. Con la sesión de q14 usa la fecha de la operación y propaga
-    cualquier fallo al dueño de la transacción para que la revierta.
+    aplicación. Con una sesión prestada usa la fecha de la venta. Ante un
+    fallo aborta la transacción completa, incluidas las escrituras previas
+    del llamador, y propaga la excepción.
     """
-    if not isinstance(id_venta, str) or not id_venta.strip():
-        raise ErrorStock("venta_invalida", "id_venta debe ser texto no vacío")
     if sesion is None:
         fecha_aplicacion = fecha_bson(hoy_local())
         with db.client.start_session() as propia:
@@ -32,10 +31,17 @@ def q15(db, id_venta, sesion=None):
                 lambda activa: _descontar(activa, db, id_venta, fecha_aplicacion))
     if not sesion.in_transaction:
         raise ErrorStock("transaccion_requerida", "La sesión recibida debe tener una transacción activa")
-    return _descontar(sesion, db, id_venta, None)
+    try:
+        return _descontar(sesion, db, id_venta, None)
+    except Exception:
+        if sesion.in_transaction:
+            sesion.abort_transaction()
+        raise
 
 
 def _descontar(sesion, db, id_venta, fecha_aplicacion):
+    if not isinstance(id_venta, str) or not id_venta.strip():
+        raise ErrorStock("venta_invalida", "id_venta debe ser texto no vacío")
     venta = db.ventas.find_one({"id_venta": id_venta}, session=sesion)
     if venta is None:
         raise ErrorStock("venta_inexistente", f"No existe la venta {id_venta}")
@@ -96,8 +102,10 @@ def _descontar(sesion, db, id_venta, fecha_aplicacion):
         if cambio.matched_count != 1:
             raise ErrorStock("conflicto_stock", f"El lote {item['id_lote']} cambió durante la venta")
     reparto = [item for _, item in asignaciones]
-    db.ventas.update_one(
+    cambio = db.ventas.update_one(
         {"_id": venta["_id"]},
         {"$set": {"registro.descuento": reparto}, "$unset": {"registro.stock_pendiente": ""}},
         session=sesion)
+    if cambio.matched_count != 1:
+        raise ErrorStock("conflicto_stock", f"No se pudo guardar el reparto de la venta {id_venta}")
     return reparto

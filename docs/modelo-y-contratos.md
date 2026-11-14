@@ -243,8 +243,8 @@ q15(db, id_venta, sesion=None)
 - q15 recibe el ID de venta y usa la sesión activa de q14 si se le pasa una.
   Para una ejecución autónoma abre su propia transacción. Lee la venta y sus
   detalles, agrupa cantidades por producto y consume lotes de su sucursal por
-  vencimiento ascendente y luego por `id_lote`. Un rechazo de stock se propaga
-  a q14 para revertir la operación completa. q15 devuelve el reparto del
+  vencimiento ascendente y luego por `id_lote`. Ante un fallo, q15 aborta
+  la transacción prestada y propaga la excepción a q14. q15 devuelve el reparto del
   descuento con `id_producto`, `id_lote` y unidades descontadas. q14 es dueña de
   la sesión y de la confirmación de venta, receta, detalles y stock.
 - Propuesta de reintento: la misma clave con los mismos argumentos devuelve
