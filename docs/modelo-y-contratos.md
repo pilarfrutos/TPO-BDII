@@ -229,6 +229,43 @@ comandos de terminal usan la fecha del sistema.
 | [q10](evidencias/q10.md) | `python scripts/run_query.py q10 --id-sucursal DS006` | `DC007`, atendido en `DV007` por `DF009`, inactivo. |
 | [q12](evidencias/q12.md) | `python scripts/run_query.py q12` | `C004`, `C008` y `DC006`–`DC010` al `2026-11-13`. |
 
+### Costo y alternativas del refresco de Neo4j
+
+Cada llamada a q03, q04, q06, q10 o q12 comprueba las restricciones de Neo4j
+con DDL idempotente. Después toma el bloqueo de `ControlProyeccion`, lee un
+snapshot de las nueve colecciones de MongoDB, lo valida y reconcilia todos los
+nodos y vínculos. El bloqueo se mantiene durante la consulta Cypher y hasta
+que termina la transacción. Las llamadas concurrentes pueden esperar por ese
+bloqueo, incluso cuando consultan clientes distintos. El costo del refresco
+crece con el volumen total de los datos proyectados.
+
+En una muestra de la auditoría, con 193 nodos de negocio y 247 relaciones,
+q03 para `DC001` tardó **39 ms con refresco** y **3 ms ejecutando solo el
+Cypher** sobre el grafo ya publicado. El `PROFILE` del Cypher usó
+`NodeUniqueIndexSeek` para localizar al cliente, recorrió sus vínculos con
+ventas y recetas y ordenó seis eventos. Algunas estimaciones fueron de cero
+filas para pasos que devolvieron una o seis. Son mediciones puntuales de una
+ejecución local. Para caracterizar el rendimiento habría que repetir la
+medición, incluir consultas concurrentes y medir la espera por el bloqueo.
+
+Para el volumen del TPO se conserva el refresco completo. Permite que cada
+consulta lea el mismo snapshot que acaba de publicar y que el siguiente
+refresco reconstruya la proyección a partir de MongoDB tras una falla. Si
+crece el volumen o la frecuencia de lecturas, conviene medir primero la
+latencia p95, el tiempo de espera por el bloqueo y el desfase de datos que
+puede tolerar cada consulta.
+
+- **Refresco periódico.** Separar la publicación de las consultas permite
+  compartir un refresco entre varias lecturas. Tiene sentido si es aceptable
+  leer el último snapshot publicado con un desfase acotado. El intervalo y
+  los fallos de publicación determinan ese desfase.
+- **Refresco incremental.** Si el grafo crece, cambia una fracción pequeña
+  de los datos y se requiere un desfase bajo, un consumidor puede aplicar
+  los cambios confirmados en MongoDB. Debe conservar juntas las escrituras
+  de cada venta, poder repetir cambios sin duplicarlos y retomar desde un
+  punto de progreso persistido. La reconstrucción completa sirve para
+  recuperar la proyección si se pierde ese punto o el historial de cambios.
+
 ## Fechas y contratos de venta para T12–T14
 
 Firmas propuestas para revisar con A y C.
