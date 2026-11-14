@@ -2,13 +2,11 @@
 
 Lista de verificación para comprobar que la entrega cumple la consigna
 (`TPO_FarmaRed.pdf`, 2.º cuatrimestre 2026). Cada requisito indica su origen en
-la consigna y la tarea de [TAREAS.md](../TAREAS.md) que lo cubre.
+la consigna y el identificador de la tarea interna que lo cubre.
 
 - **Consigna**: exigencia del enunciado; su incumplimiento afecta la nota.
 - **Equipo**: recomendación o interpretación propia; puede cambiarse si se
   acuerda y se documenta.
-
-Revisado el 13/11/2026, con T05–T14 integradas en `main`.
 
 ## 1. Datos de la entrega
 
@@ -100,9 +98,10 @@ Las quince funciones están en `src/services/` y tienen evidencia en
 [ejemplos y pruebas de borde](evidencias/t08.md) con los CSV originales y
 casos preparados en una base temporal. q02, q05 y q09 ([T10](evidencias/t10.md))
 y q03, q04, q06, q10 y q12 ([T09](modelo-y-contratos.md)) se verificaron con los
-adicionales de [T07](evidencias/t07.md). Quedan pendientes la ejecución por
-terminal de q13–q15 (T16), las pruebas de concurrencia y fallos (T15), el
-informe (T17) y el ensayo final (T18).
+adicionales de [T07](evidencias/t07.md). El [README](../README.md#ejecutar-una-consulta)
+documenta la ejecución por terminal de q01–q15 (T16). Las pruebas de
+concurrencia y fallos se ejecutaron y tienen [evidencia de T15](evidencias/t15.md).
+Quedan pendientes el informe (T17) y el ensayo final (T18).
 
 ## 6. Criterios de evaluación
 
