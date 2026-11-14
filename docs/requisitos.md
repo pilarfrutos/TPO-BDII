@@ -122,7 +122,8 @@ del sistema, así que los resultados de los originales cambian con el tiempo.
 
 - **RC002**: dispensas el 15/07 (V004) y el 15/08 (V005). Según N2, la
   próxima dispensa sería el 14/09/2026, pero el CSV dice 15/09/2026. Se
-  conserva el valor original y se documenta en el informe.
+  conserva el valor original y q06 lo usa como fecha histórica. q14 aplica
+  la regla de 30 días a las nuevas dispensas cuando quedan dispensas disponibles.
 
 ### Estados históricos válidos (no son errores)
 
@@ -154,13 +155,11 @@ Con la fecha del sistema, los originales casi no producen resultados en las
 consultas relativas: en noviembre de 2026 no hay ventas del mes actual (q11),
 y el resultado de q05 depende del día en que se ejecute.
 
-**Resuelto en T07.** Los adicionales usan fechas fijas alrededor del
-**13/11/2026** (ver [T07](evidencias/t07.md)). Las funciones que admiten un día
-inyectado se prueban con esa fecha, y las evidencias la indican. Si el ensayo
-final (T18) o la corrección se hacen otro día, q05, q06, q11 y q12 por terminal
-van a dar otros resultados que la evidencia. q14 también puede encontrar
-vencidos lotes que el 13/11 eran utilizables. T07 prevé revisar la fecha base
-antes del ensayo final.
+Los adicionales usan fechas fijas alrededor del **13/11/2026** y representan
+un recorte de la historia. El ejemplo de `DRC010` y los cortes temporales
+están documentados en [T07](evidencias/t07.md). Para reproducir la evidencia,
+pasá el argumento `hoy` desde Python cuando esté disponible. En la CLI,
+q05, q06, q11 y q12 usan la fecha del sistema y sus resultados pueden variar.
 
 ## 8. Dudas e interpretaciones pendientes
 

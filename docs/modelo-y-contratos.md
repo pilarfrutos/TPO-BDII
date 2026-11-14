@@ -218,8 +218,8 @@ Se verificaron las cinco consultas en MongoDB 8.0.16 y Neo4j 5.26 desde una
 base limpia. El cargador final incorporó los originales y los adicionales de
 T07. Dos refrescos consecutivos dieron 193 nodos de negocio y 247 relaciones.
 Los ejemplos temporales de q06 y q12 se comprobaron con fecha controlada
-`2026-11-13`. Los comandos de terminal también se ejecutaron con la fecha del
-sistema.
+`2026-11-13` mediante el argumento `hoy` de las funciones Python. Los
+comandos de terminal usan la fecha del sistema.
 
 | Consulta | Comando desde la raíz | Resultado con la carga final |
 | --- | --- | --- |
